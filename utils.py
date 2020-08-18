@@ -1,5 +1,5 @@
 import jax
-import jax.numpy as jnp
+import jax.numpy as np
 import tensorflow_probability as tfp; tfp = tfp.experimental.substrates.jax
 tfd = tfp.distributions
 

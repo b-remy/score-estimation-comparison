@@ -1,5 +1,11 @@
 # Neural Score Estimation Comparison for Generative Modeling
 
+Methods comparison at commit 3b6a122c81bdddf08871e90fd6c6ad6d0973f03e.
+
+See notebook in branch *normalizing_flows*
+
+![](images/methods_comparison.png)
+
 First results at commit 13dc9331c78c7091ee6faf5e18f6e8cbc1c6b21f
 (for one draw)
 

@@ -12,13 +12,19 @@ from nsec.normalization import SNParamsTree as CustomSNParamsTree
 from nsec.utils import display_score_error_gm, display_score_error_two_moons
 from functools import partial
 import matplotlib.pyplot as plt
+import pickle
+import os
+
+run_session = 'run-001'
+
+os.mkdir('params/{}'.format(run_session))
 
 # Tow moons dataset
-#distribution, dist_label = get_two_moons(0.05), 'two_moons'
+distribution, dist_label = get_two_moons(0.05), 'two_moons'
 # Mixture 2 gaussian dataset
 #distribution, dist_label = get_gm(0.5), 'two_gaussians'
 # Swiss roll
-distribution, dist_label = get_swiss_roll(0.05), 'swiss_roll'
+#distribution, dist_label = get_swiss_roll(0.05), 'swiss_roll'
 
 # Computing the true score of data distribution
 true_score = jax.vmap(jax.grad(distribution.log_prob))
@@ -66,12 +72,19 @@ params, state = model_train.init(next(rng_seq),
 opt_state = optimizer.init(params)
 losses = []
 
+
+print("Let's learn a denoising auto encoder")
 for step in range(2000):
     batch = get_batch(next(rng_seq))
     loss, params, state, opt_state = update(params, state, next(rng_seq), opt_state, batch)
     losses.append(loss)
     if step%100==0:
         print(step, loss)
+
+
+os.mkdir('params/{}/{}_{}'.format(run_session, 'ardae', dist_label))
+with open('params/{}/{}_{}/params.pickle'.format(run_session, 'ardae', dist_label), 'wb') as handle:
+    pickle.dump(params, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 model = hk.transform_with_state(partial(forward, is_training=False))
 dae_score = partial(model.apply, params, state, next(rng_seq))
@@ -82,8 +95,10 @@ def forward(x, sigma, is_training=False):
     denoiser = ARDAE(is_training=is_training)
     return denoiser(x, sigma)
 
+lipschitz_constant = 5
+
 model_train = hk.transform_with_state(partial(forward, is_training=True))
-sn_fn = hk.transform_with_state(lambda x: CustomSNParamsTree(ignore_regex='[^?!.]*b$')(x))
+sn_fn = hk.transform_with_state(lambda x: CustomSNParamsTree(ignore_regex='[^?!.]*b$', val=lipschitz_constant)(x))
 
 batch_size = 512
 delta = 0.05
@@ -123,12 +138,24 @@ opt_state = optimizer.init(params)
 _, sn_state = sn_fn.init(jax.random.PRNGKey(1), params)
 losses = []
 
+print("Let's learn a denoising auto encoder with spectral normalization (cte = {})".format(lipschitz_constant))
 for step in range(2000):
     batch = get_batch(next(rng_seq))
     loss, params, state, sn_state, opt_state = update(params, state, sn_state, next(rng_seq), opt_state, batch)
     losses.append(loss)
     if step%100==0:
         print(step, loss)
+
+os.mkdir('params/{}/{}_{}'.format(run_session, 'ardae_sn', dist_label))
+with open('params/{}/{}_{}/params-{}.pickle'.format(run_session, 'ardae_sn', dist_label, lipschitz_constant), 'wb') as handle:
+    pickle.dump(params, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+"""
+# To load model params from pickle file
+with open('../params/filename.pickle', 'rb') as handle:
+    b = pickle.load(handle)
+"""
+
 
 model_sn = hk.transform_with_state(partial(forward, is_training=False))
 score_sn = partial(model_sn.apply, params, state, next(rng_seq))

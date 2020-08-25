@@ -60,6 +60,7 @@ class SpectralNorm(hk.Module):
       self,
       eps: float = 1e-4,
       n_steps: int = 1,
+      val: float = 2,
       name: Optional[str] = None,
   ):
     """Initializes an SpectralNorm module.
@@ -72,6 +73,7 @@ class SpectralNorm(hk.Module):
     super().__init__(name=name)
     self.eps = eps
     self.n_steps = n_steps
+    self.val = val
 
   def __call__(
       self,
@@ -126,7 +128,7 @@ class SpectralNorm(hk.Module):
     sigma = jnp.matmul(jnp.matmul(v0, value), jnp.transpose(u0))[0, 0]
 
     value /= sigma
-    value *= 2
+    value *= self.val
     value_bar = value.reshape(value_shape)
 
     if update_stats:
@@ -154,6 +156,7 @@ class SNParamsTree(hk.Module):
       eps: float = 1e-4,
       n_steps: int = 1,
       ignore_regex: str = "",
+      val: float = 2,
       name: Optional[str] = None,
   ):
     """Initializes an SNParamsTree module.
@@ -170,6 +173,7 @@ class SNParamsTree(hk.Module):
     self.eps = eps
     self.n_steps = n_steps
     self.ignore_regex = ignore_regex
+    self.val = val
 
   def __call__(self, tree, update_stats=True):
     def maybe_sn(k, v):
@@ -177,7 +181,7 @@ class SNParamsTree(hk.Module):
         return v
       else:
         sn_name = k.replace("/", "__").replace("~", "_tilde")
-        return SpectralNorm(self.eps, self.n_steps, name=sn_name)(
+        return SpectralNorm(self.eps, self.n_steps, val=self.val, name=sn_name)(
             v, update_stats=update_stats)
 
     # We want to potentially replace params with Spectral Normalized versions.

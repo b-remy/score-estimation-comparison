@@ -42,7 +42,7 @@ class NeuralSplineFlow(hk.Module):
     def __init__(self):
         super(NeuralSplineFlow, self).__init__()
 
-    def __call__(self, x):
+    def __call__(self):
         spline1 = NeuralSplineCoupling(1, 'coupling1')
         spline2 = NeuralSplineCoupling(1, 'coupling2')
         spline3 = NeuralSplineCoupling(1, 'coupling3')
@@ -60,8 +60,7 @@ class NeuralSplineFlow(hk.Module):
         ])
 
         nvp = tfd.TransformedDistribution(
-                tfd.Normal(0,1),
-                bijector=chain,
-                event_shape=(2,))
+                tfd.MultivariateNormalDiag([0.,0.],scale_identity_multiplier=1.),
+                bijector=chain)
 
-        return nvp.log_prob(x)
+        return nvp

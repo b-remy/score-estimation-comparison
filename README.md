@@ -1,5 +1,8 @@
 # Neural Score Estimation Comparison for Generative Modeling
 
+How models generalize? (The higher the log likelihood, the closer to the data distribution)
+![](images/generalization_error_distance.png)
+
 Methods comparison at commit 3b6a122c81bdddf08871e90fd6c6ad6d0973f03e.
 
 See notebook in branch *normalizing_flows*

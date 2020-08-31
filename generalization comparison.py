@@ -16,14 +16,16 @@ import matplotlib.pyplot as plt
 import pickle
 import os, os.path
 
-# Tow moons dataset
-distribution, dist_label = get_two_moons(0.05), 'two_moons'
-# Mixture 2 gaussian dataset
-#distribution, dist_label = get_gm(0.5), 'two_gaussians'
-# Swiss roll
-#distribution, dist_label = get_swiss_roll(0.5), 'swiss_roll'
+# noise / delta
 
-delta = 0.05
+# Tow moons dataset
+distribution, dist_label, delta = get_two_moons(0.05), 'two_moons', 0.05
+# Mixture 2 gaussian dataset
+#distribution, dist_label, delta = get_gm(0.5), 'two_gaussians', 0.5
+# Swiss roll
+#distribution, dist_label, delta = get_swiss_roll(0.5), 'swiss_roll', 0.5
+
+#delta = 0.05
 
 # Computing the true score of data distribution
 true_score = jax.vmap(jax.grad(distribution.log_prob))
@@ -203,7 +205,13 @@ def log_prob_reshaped(x):
 
 score_NF = jax.vmap(jax.grad(log_prob_reshaped))
 
-scale = 3
+if dist_label=='two_moons':
+    scale = 3
+elif dist_label=='two_gaussians':
+    scale = 1
+elif dist_label=='swiss_roll':
+    scale = 4
+
 offset = jnp.array([0., 0.])
 
 d_offset = jnp.array([.5, .25])
@@ -240,25 +248,33 @@ errors = [errors_sn, errors_dae, errors_nf]
 v_min = jnp.min([jnp.min(e) for e in errors[:-1]])
 v_max = jnp.max([jnp.max(e) for e in errors[:-1]])
 
-plt.figure(dpi=100)
+#plt.figure(dpi=100)
 
-plt.subplot(311)
+plt.subplot(131)
+plt.title('DAE', fontsize=9)
 plt.imshow(errors_dae, origin='lower', vmin=v_min, vmax=v_max)
 plt.colorbar()
 
-plt.subplot(312)
+plt.subplot(132)
+plt.title('DAE w/ SN', fontsize=9)
 plt.imshow(errors_sn, origin='lower', vmin=v_min, vmax=v_max)
 plt.colorbar()
 
-plt.subplot(313)
+plt.subplot(133)
+plt.title('NSF', fontsize=9)
 plt.imshow(errors_nf, origin='lower', vmin=v_min, vmax=v_max)
 plt.colorbar()
+
+plt.tight_layout()
+
+plt.savefig('images/generalization_score_error.png')
+
 
 #plt.imshow(errors[i], origin='lower', vmin=v_min, vmax=v_max)
 #plt.subplot(122)
 #quiver(X[::4], Y[::4], estimated_s[::4,::4,0], estimated_s[::4,::4,1]);
 
-curve_error = []
+#curve_error = []
 
 estimated_sn, state = score_sn(points, 0.0*jnp.ones((len(points),1)))
 estimated_sn /= jnp.linalg.norm(estimated_sn)
@@ -315,7 +331,7 @@ for i in range(n_p//r):
     table_nf_bined[1, i] = onp.mean(error_nf[a:b])
     d_nf[i] = onp.std(error_nf[a:b])/2
 
-plt.figure(dpi=100)
+plt.figure(dpi=120)
 
 plt.plot(table_nf_bined[0,:], table_nf_bined[1,:], alpha=1, label='NSF', color='green')
 plt.fill_between(table_nf_bined[0,:], table_nf_bined[1,:] - d_nf, table_nf_bined[1,:] + d_nf,
@@ -333,5 +349,7 @@ plt.xlabel('$\log p(x)$')
 plt.ylim((-.0005, .04))
 #plt.xscale('log')
 plt.legend()
+plt.savefig('images/generalization_error_distance.png')
+
 
 plt.show()

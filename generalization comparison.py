@@ -18,6 +18,11 @@ import os, os.path
 
 # noise / delta
 
+num_runs = len([name for name in os.listdir('./params')])
+run_session = 'run-{}'.format(num_runs+1)
+
+os.mkdir('params/{}'.format(run_session))
+
 # Tow moons dataset
 distribution, dist_label, delta = get_two_moons(0.05), 'two_moons', 0.05
 # Mixture 2 gaussian dataset
@@ -81,6 +86,11 @@ for step in range(2000):
     if step%100==0:
         print(step, loss)
 
+
+os.mkdir('params/{}/{}_{}'.format(run_session, 'ardae', dist_label))
+with open('params/{}/{}_{}/params.pickle'.format(run_session, 'ardae', dist_label), 'wb') as handle:
+    pickle.dump(params, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 model = hk.transform_with_state(partial(forward, is_training=False))
 dae_score = partial(model.apply, params, state, next(rng_seq))
 
@@ -88,6 +98,8 @@ dae_score = partial(model.apply, params, state, next(rng_seq))
 """
 #lipschitz_constants = [0.01, 0.1, 0.5, 1, 2, 5, 10]
 l = 2
+
+os.mkdir('params/{}/{}_{}'.format(run_session, 'ardae_sn', dist_label))
 
 def forward(x, sigma, is_training=False):
     denoiser = ARDAE(is_training=is_training)
@@ -143,6 +155,8 @@ for step in range(2000):
     if step%100==0:
         print(step, loss)
 
+with open('params/{}/{}_{}/params-{}.pickle'.format(run_session, 'ardae_sn', dist_label, lipschitz_constant), 'wb') as handle:
+    pickle.dump(params, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 model_sn = hk.transform_with_state(partial(forward, is_training=False))
 score_sn = partial(model_sn.apply, params, state, next(rng_seq))
@@ -195,6 +209,10 @@ for step in range(2000):
     losses.append(loss)
     if step%100==0:
         print(loss)
+
+os.mkdir('params/{}/{}_{}'.format(run_session, 'normalizing-flow', dist_label))
+with open('params/{}/{}_{}/params.pickle'.format(run_session, 'normalizing-flow', dist_label), 'wb') as handle:
+    pickle.dump(params, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 log_prob = partial(model_NF.apply, params, next(rng_seq))
 log_prob(jnp.zeros(2).reshape(1,2)).shape

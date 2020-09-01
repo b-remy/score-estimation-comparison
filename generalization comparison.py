@@ -24,13 +24,13 @@ run_session = 'run-{}'.format(num_runs+1)
 os.mkdir('params/{}'.format(run_session))
 
 # Tow moons dataset
-distribution, dist_label, delta = get_two_moons(0.05), 'two_moons', 0.05
+#distribution, dist_label, delta = get_two_moons(0.05), 'two_moons', 0.05
 # Mixture 2 gaussian dataset
-#distribution, dist_label, delta = get_gm(0.5), 'two_gaussians', 0.5
+distribution, dist_label, delta = get_gm(0.5), 'two_gaussians', 0.5
 # Swiss roll
 #distribution, dist_label, delta = get_swiss_roll(0.5), 'swiss_roll', 0.5
 
-#delta = 0.05
+#delta = 0.5
 
 # Computing the true score of data distribution
 true_score = jax.vmap(jax.grad(distribution.log_prob))
@@ -225,16 +225,22 @@ score_NF = jax.vmap(jax.grad(log_prob_reshaped))
 
 if dist_label=='two_moons':
     scale = 3
+    offset = jnp.array([0., 0.])
+    d_offset = jnp.array([.5, .25])
+    c1 = scale * (jnp.array([-.7, -0.5])) + d_offset + offset
+    c2 = scale * (jnp.array([.7, 0.5])) + d_offset + offset
+
 elif dist_label=='two_gaussians':
     scale = 1
+    offset = jnp.array([0., 0.])
+    c1 = scale * jnp.array([-7., -7]) + offset
+    c2 = scale * jnp.array([7., 7]) + offset
 elif dist_label=='swiss_roll':
     scale = 4
+    offset = jnp.array([0., 0.])
+    c1 = scale * jnp.array([-7., -7]) + offset
+    c2 = scale * jnp.array([7., 7]) + offset
 
-offset = jnp.array([0., 0.])
-
-d_offset = jnp.array([.5, .25])
-c1 = scale * (jnp.array([-.7, -0.5])) + d_offset + offset
-c2 = scale * (jnp.array([.7, 0.5])) + d_offset + offset
 
 #X = np.arange(c1[0], c2[0], 0.1)
 #Y = np.arange(c1[1], c2[1], 0.1)

@@ -230,18 +230,8 @@ class UResNet(hk.Module):
     out = jnp.concatenate([out, condition*jnp.ones_like(out)[...,[0]]], axis=-1)
     out = self.initial_conv(out)
 
-    if not self.resnet_v2:
-      out = self.initial_batchnorm(out, is_training, test_local_stats)
-      out = jax.nn.relu(out)
-
-    levels = [out]
-    #
-    # out = hk.avg_pool(out,
-    #                   window_shape=(1, 3, 3, 1),
-    #                   strides=(1, 2, 2, 1),
-    #                   padding="SAME")
-
     # Decreasing resolution
+    levels = []
     for block_group in self.block_groups:
       levels.append(out)
       out = block_group(out, is_training, test_local_stats)
@@ -252,15 +242,9 @@ class UResNet(hk.Module):
     for i, block_group in enumerate(self.up_block_groups[::-1]):
       out = block_group(out, is_training, test_local_stats)
       out = jnp.concatenate([out, levels[-i-1]],axis=-1)
-    # Second to last upsampling, merging with input branch
-    #out = jnp.concatenate([jax.nn.relu(self.final_upconv(out)), levels[0]], axis=-1)
-    out = jnp.concatenate([out, levels[0]], axis=-1)
-    
-    if self.resnet_v2:
-      out = self.final_batchnorm(out, is_training, test_local_stats)
-      out = jax.nn.relu(out)
 
-    return self.final_conv(out) + inputs
+    # Second to last upsampling, merging with input branch
+    return self.final_conv(out)/((condition + jnp.sign(condition)*1e-3)*jnp.ones_like(inputs))
 
 class SmallUResNet(UResNet):
   """ResNet18."""
@@ -276,7 +260,7 @@ class SmallUResNet(UResNet):
         to ``False``.
       name: Name of the module.
     """
-    super().__init__(blocks_per_group=(1, 1, 1, 1),
+    super().__init__(blocks_per_group=(2, 2, 2, 2),
                      bn_config=bn_config,
                      bottleneck=False,
                      channels_per_group=(32, 64, 128, 128),

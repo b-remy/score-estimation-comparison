@@ -26,9 +26,9 @@ os.mkdir('params/{}'.format(run_session))
 # Tow moons dataset
 #distribution, dist_label, delta = get_two_moons(0.05), 'two_moons', 0.05
 # Mixture 2 gaussian dataset
-distribution, dist_label, delta = get_gm(0.5), 'two_gaussians', 0.5
+#distribution, dist_label, delta = get_gm(0.5), 'two_gaussians', 0.5
 # Swiss roll
-#distribution, dist_label, delta = get_swiss_roll(0.5), 'swiss_roll', 0.5
+distribution, dist_label, delta = get_swiss_roll(0.5), 'swiss_roll', 0.5
 
 #delta = 0.5
 
@@ -97,7 +97,7 @@ dae_score = partial(model.apply, params, state, next(rng_seq))
 """Creates AR-DAE model with Lipschitz normalization
 """
 #lipschitz_constants = [0.01, 0.1, 0.5, 1, 2, 5, 10]
-l = 2
+l = 1.
 
 os.mkdir('params/{}/{}_{}'.format(run_session, 'ardae_sn', dist_label))
 
@@ -168,6 +168,7 @@ print("Let's build a Neural Spline Flow")
 """Build a Normalizing follows
 """
 
+"""
 def forwardNF(x):
     flow = NeuralSplineFlow()
     return flow(x)
@@ -222,6 +223,7 @@ def log_prob_reshaped(x):
     return jnp.reshape(log_prob(x), ())
 
 score_NF = jax.vmap(jax.grad(log_prob_reshaped))
+"""
 
 if dist_label=='two_moons':
     scale = 3
@@ -256,50 +258,73 @@ estimated_sn = estimated_sn.reshape([len(Y), len(X),2])/jnp.linalg.norm(estimate
 estimated_dae, state = dae_score(points, 0.0*jnp.ones((len(points),1)))
 estimated_dae = estimated_dae.reshape([len(Y), len(X),2])/jnp.linalg.norm(estimated_dae)
 
+
+"""
 estimated_nf = score_NF(points)
 estimated_nf = estimated_nf.reshape([len(Y), len(X),2])/jnp.linalg.norm(estimated_nf)
-
+"""
 true_score = jax.vmap(jax.grad(distribution.log_prob))
 true_s = true_score(points)
 true_s = true_s.reshape([len(Y), len(X),2])/jnp.linalg.norm(true_s)
 
 errors_sn = jnp.linalg.norm(estimated_sn - true_s, axis=2)
 errors_dae = jnp.linalg.norm(estimated_dae - true_s, axis=2)
+"""
 errors_nf = jnp.linalg.norm(estimated_nf - true_s, axis=2)
 
 errors = [errors_sn, errors_dae, errors_nf]
+"""
+errors = [errors_sn, errors_dae]
 
 v_min = jnp.min([jnp.min(e) for e in errors[:-1]])
 v_max = jnp.max([jnp.max(e) for e in errors[:-1]])
 
 #plt.figure(dpi=100)
 
-plt.subplot(131)
+#plt.subplot(131)
+plt.subplot(221)
 plt.title('DAE', fontsize=9)
 plt.imshow(errors_dae, origin='lower', vmin=v_min, vmax=v_max)
 plt.colorbar()
 
-plt.subplot(132)
+plt.subplot(222)
+g = estimated_dae
+plt.quiver(X[::4], Y[::4], g[::4,::4,0], g[::4,::4,1])
+
+plt.subplot(223)
 plt.title('DAE w/ SN', fontsize=9)
 plt.imshow(errors_sn, origin='lower', vmin=v_min, vmax=v_max)
 plt.colorbar()
 
+plt.subplot(224)
+g = estimated_sn
+plt.quiver(X[::4], Y[::4], g[::4,::4,0], g[::4,::4,1])
+
+#plt.subplot(133)
+#plt.title('distribution')
+#a = distribution.log_prob(points)
+#lp = a.reshape([len(Y), len(X)])
+#plt.contourf(X,Y,lp,256,vmin=-30)
+
+"""
 plt.subplot(133)
 plt.title('NSF', fontsize=9)
 plt.imshow(errors_nf, origin='lower', vmin=v_min, vmax=v_max)
 plt.colorbar()
-
+"""
 plt.tight_layout()
 
+"""
 plt.savefig('images/generalization_score_error.png')
-
+"""
+plt.show()
 
 #plt.imshow(errors[i], origin='lower', vmin=v_min, vmax=v_max)
 #plt.subplot(122)
 #quiver(X[::4], Y[::4], estimated_s[::4,::4,0], estimated_s[::4,::4,1]);
 
 #curve_error = []
-
+"""
 estimated_sn, state = score_sn(points, 0.0*jnp.ones((len(points),1)))
 estimated_sn /= jnp.linalg.norm(estimated_sn)
 
@@ -325,12 +350,14 @@ error_dae = error_dae[argsort_distance]
 error_nf = error_nf[argsort_distance]
 
 """
+"""
 table_sn = jnp.stack([distance, error_sn])
 table_sn = jnp.sort(table_sn, 1)
 table_dae = jnp.stack([distance, error_dae])
 table_dae = jnp.sort(table_dae, 1)
 table_nf = jnp.stack([distance, error_nf])
 table_nf = jnp.sort(table_nf, 1)
+"""
 """
 
 n_p = distance.shape[0]
@@ -377,3 +404,4 @@ plt.savefig('images/generalization_error_distance.png')
 
 
 plt.show()
+"""

@@ -244,7 +244,7 @@ class UResNet(hk.Module):
       out = jnp.concatenate([out, levels[-i-1]],axis=-1)
 
     # Second to last upsampling, merging with input branch
-    return self.final_conv(out)/((condition + jnp.sign(condition)*1e-3)*jnp.ones_like(inputs))
+    return self.final_conv(out)/(jnp.abs(condition)*jnp.ones_like(inputs)+1e-3)
 
 class SmallUResNet(UResNet):
   """ResNet18."""

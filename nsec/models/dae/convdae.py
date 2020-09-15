@@ -153,6 +153,7 @@ class UResNet(hk.Module):
                bottleneck,
                channels_per_group,
                use_projection,
+               n_output_channels=1,
                use_bn=True,
                name=None):
     """Constructs a Residual UNet model based on a traditional ResNet.
@@ -170,6 +171,8 @@ class UResNet(hk.Module):
         of channels used for each block in each group.
       use_projection: A sequence of length 4 that indicates whether each
         residual block should use projection.
+      n_output_channels: The number of output channels, for example to change in
+        the case of a complex denoising. Defaults to 1.
       use_bn: Whether the network should use batch normalisation. Defaults to
         ``True``.
       name: Name of the module.
@@ -177,6 +180,7 @@ class UResNet(hk.Module):
     super().__init__(name=name)
     self.resnet_v2 = False
     self.use_bn = use_bn
+    self.n_output_channels = n_output_channels
     bn_config = dict(bn_config or {})
     bn_config.setdefault("decay_rate", 0.9)
     bn_config.setdefault("eps", 1e-5)
@@ -229,13 +233,7 @@ class UResNet(hk.Module):
     if self.resnet_v2 and self.use_bn:
       self.final_batchnorm = hk.BatchNorm(name="final_batchnorm", **bn_config)
 
-    self.final_upconv = hk.Conv2DTranspose(output_channels=1,
-                                kernel_shape=5,
-                                stride=2,
-                                padding="SAME",
-                                name="final_upconv")
-
-    self.final_conv = hk.Conv2DTranspose(output_channels=1,
+    self.final_conv = hk.Conv2DTranspose(output_channels=self.n_output_channels,
                                 kernel_shape=5,
                                 stride=2,
                                 padding="SAME",

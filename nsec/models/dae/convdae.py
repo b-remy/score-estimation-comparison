@@ -276,7 +276,7 @@ class UResNet(hk.Module):
       out = jnp.concatenate([out, levels[-i-1]],axis=-1)
 
     # Second to last upsampling, merging with input branch
-    out = self.final_conv(out)/(jnp.abs(condition)*jnp.ones_like(inputs)+1e-3)
+    out = self.final_conv(out)/(jnp.abs(condition)*jnp.ones_like(pad_for_pool(inputs, 4)[0])+1e-3)
     if not jnp.sum(padding) == 0:
         out = out[:, :, padding[0]:-padding[1]]
     return out

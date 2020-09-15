@@ -37,7 +37,7 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
     ##### BATCH DEFINITION
     # (image_noisy, noise_power), noise_realisation
     # here the noise_realisation is the full one, not the epsilon from the standard normal law
-
+    print('Finished building dataset, now initializing jax')
     def forward(x, s, is_training=False):
         denoiser = SmallUResNet()
         return denoiser(x, s, is_training=is_training)
@@ -75,7 +75,8 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
         return loss, new_params, state, new_sn_state, new_opt_state
 
     losses = []
-    for step, batch in tqdm(enumerate(mri_images_iterator), total=n_steps):
+    print('Finished initializing jax, now onto the optim')
+    for step, batch in tqdm(enumerate(mri_images_iterator), total=n_steps, desc='Steps'):
         loss, params, state, sn_state, opt_state = update(params, state, sn_state, next(rng_seq), opt_state, batch)
         losses.append(loss)
         if step%100==0:

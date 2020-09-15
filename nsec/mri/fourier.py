@@ -45,7 +45,7 @@ class FFT2:
         """
         masked_fft_coeffs = self.mask * x
         masked_fft_coeffs = masked_fft_coeffs * self.scaling_norm
-        return jnp.fft.fftshift(jnp.fft.ifft2(jnp.fft.ifftshift(masked_fft_coeffs, axes=(-2, -1)), norm='ortho'), axes=(-2, -1))
+        return jnp.fft.fftshift(jnp.fft.ifft2(jnp.fft.ifftshift(masked_fft_coeffs, axes=(-2, -1))), axes=(-2, -1))
 
 
 def fft(image):

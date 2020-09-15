@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import haiku as hk
 os.environ['XLA_FLAGS']='--xla_gpu_cuda_data_dir=/gpfslocalsys/cuda/10.1.2'
@@ -91,4 +92,4 @@ else:
     print(losses)
 
 with open('conv-dae-L2-mri.pckl', 'wb') as file:
-    pickle.dump([params, state, sn_state], file)
+    pickle.dump([params, state, sn_state], str(Path(os.environ['CHECKPOINTS_DIR']) / file))

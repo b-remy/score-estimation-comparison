@@ -24,11 +24,12 @@ class ScoreUncalibratedHamiltonianMonteCarlo(tfp.mcmc.UncalibratedHamiltonianMon
                state_gradients_are_stopped=False,
                seed=None,
                store_parameters_in_results=False,
-               name=None):
+               name=None,
+               dtype=jnp.float32):
     # We begin by creating a fake logp, with the correct scores
     @jax.custom_jvp
     def fake_logp(x):
-      return 0.
+      return jnp.array(0., dtype=dtype)
     @fake_logp.defjvp
     def fake_logp_jvp(primals, tangents):
       x, = primals
@@ -73,12 +74,13 @@ class ScoreUncalibratedLangevin(tfp.mcmc.UncalibratedLangevin):
                parallel_iterations=10,
                compute_acceptance=True,
                seed=None,
-               name=None):
+               name=None,
+               dtype=jnp.float32):
 
     # We begin by creating a fake logp, with the correct scores
     @jax.custom_jvp
     def fake_logp(x):
-      return 0.
+      return jnp.array(0., dtype=dtype)
     @fake_logp.defjvp
     def fake_logp_jvp(primals, tangents):
       x, = primals
@@ -125,7 +127,8 @@ class ScoreHamiltonianMonteCarlo(tfp.mcmc.HamiltonianMonteCarlo):
                step_size_update_fn=None,
                seed=None,
                store_parameters_in_results=False,
-               name=None):
+               name=None,
+               dtype=jnp.float32):
     """Initializes this transition kernel.
     Args:
       target_score_fn: Python callable which takes an argument like
@@ -177,6 +180,7 @@ class ScoreHamiltonianMonteCarlo(tfp.mcmc.HamiltonianMonteCarlo):
             state_gradients_are_stopped=state_gradients_are_stopped,
             name=name or 'hmc_kernel',
             store_parameters_in_results=store_parameters_in_results,
+            dtype=dtype,
             **uhmc_kwargs),
         **mh_kwargs)
     self._parameters = self._impl.inner_kernel.parameters.copy()
@@ -332,7 +336,8 @@ class ScoreMetropolisAdjustedLangevinAlgorithm(tfp.mcmc.MetropolisAdjustedLangev
                volatility_fn=None,
                seed=None,
                parallel_iterations=10,
-               name=None):
+               name=None,
+               dtype=jnp.float32):
     """Initializes MALA transition kernel.
 
     Args:
@@ -383,6 +388,7 @@ class ScoreMetropolisAdjustedLangevinAlgorithm(tfp.mcmc.MetropolisAdjustedLangev
             volatility_fn=volatility_fn,
             parallel_iterations=parallel_iterations,
             name=name,
+            dtype=dtype,
             **uncal_kwargs),
         **mh_kwargs)
 

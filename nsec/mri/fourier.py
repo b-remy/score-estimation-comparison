@@ -9,7 +9,7 @@ class FFT2:
     def __init__(self, mask):
         self.mask = mask
         self.shape = mask.shape
-        self.scaling_norm = np.sqrt(np.prod(mask.shape[-2:]))
+        self.scaling_norm = jnp.sqrt(jnp.prod(mask.shape[-2:]))
 
     def op(self, img):
         """ This method calculates the masked Fourier transform of a 2-D image.

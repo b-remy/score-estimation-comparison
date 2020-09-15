@@ -34,7 +34,7 @@ train_mri_ds = NoisyFastMRIDatasetBuilder(
     batch_size=batch_size,
     slice_random=True,
 )
-n_steps = int(1e3)
+n_steps = int(1e4)
 mri_images_iterator = train_mri_ds.preprocessed_ds.take(n_steps).as_numpy_iterator()
 ##### BATCH DEFINITION
 # (image_noisy, noise_power), noise_realisation

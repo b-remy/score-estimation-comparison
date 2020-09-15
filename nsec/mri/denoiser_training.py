@@ -90,5 +90,5 @@ if False:
 else:
     print(losses)
 
-with open('conv-dae-L2.pckl', 'wb') as file:
+with open('conv-dae-L2-mri.pckl', 'wb') as file:
     pickle.dump([params, state, sn_state], file)

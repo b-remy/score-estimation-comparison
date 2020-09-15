@@ -266,6 +266,7 @@ class SmallUResNet(UResNet):
   def __init__(self,
                bn_config: Optional[Mapping[str, float]] = None,
                use_bn: bool = True,
+               n_output_channels: int = 1,
                name: Optional[str] = None):
     """Constructs a ResNet model.
     Args:
@@ -275,6 +276,8 @@ class SmallUResNet(UResNet):
         to ``False``.
       use_bn: Whether the network should use batch normalisation. Defaults to
         ``True``.
+      n_output_channels: The number of output channels, for example to change in
+        the case of a complex denoising. Defaults to 1.
       name: Name of the module.
     """
     super().__init__(blocks_per_group=(2, 2, 2, 2),
@@ -283,4 +286,5 @@ class SmallUResNet(UResNet):
                      channels_per_group=(32, 64, 128, 128),
                      use_projection=(True, True, True, True),
                      use_bn=use_bn,
+                     n_output_channels=n_output_channels,
                      name=name)

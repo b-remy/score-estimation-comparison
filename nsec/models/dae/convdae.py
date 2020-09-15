@@ -142,6 +142,23 @@ class BlockGroup(hk.Module):
       out = block(out, is_training, test_local_stats)
     return out
 
+def pad_for_pool(x, n_downsampling):
+    problematic_dim = jnp.shape(x)[-2]
+    k = jnp.floor_divide(problematic_dim, 2 ** n_downsampling)
+    if problematic_dim % 2 ** n_downsampling == 0:
+        n_pad = 0
+    else:
+        n_pad = (k + 1) * 2 ** n_downsampling - problematic_dim
+    padding = (n_pad//2, n_pad//2)
+    paddings = [
+        (0, 0),
+        (0, 0),  # here in the context of fastMRI there is nothing to worry about because the dim is 640 (128 x 5)
+        # even for brain data, it shouldn't be a problem, since it's 640, 512, or 768.
+        padding,
+        (0, 0),
+    ]
+    inputs_padded = jnp.pad(x, paddings)
+    return inputs_padded, padding
 
 class UResNet(hk.Module):
   """ Implementation of a denoising auto-encoder based on a resnet architecture
@@ -242,6 +259,7 @@ class UResNet(hk.Module):
   def __call__(self, inputs, condition, is_training, test_local_stats=False):
     out = inputs
     out = jnp.concatenate([out, condition*jnp.ones_like(out)[...,[0]]], axis=-1)
+    out, padding = pad_for_pool(inputs, 4)
     out = self.initial_conv(out)
 
     # Decreasing resolution
@@ -258,7 +276,10 @@ class UResNet(hk.Module):
       out = jnp.concatenate([out, levels[-i-1]],axis=-1)
 
     # Second to last upsampling, merging with input branch
-    return self.final_conv(out)/(jnp.abs(condition)*jnp.ones_like(inputs)+1e-3)
+    out = self.final_conv(out)/(jnp.abs(condition)*jnp.ones_like(inputs)+1e-3)
+    if not jnp.sum(padding) == 0:
+        out = out[:, :, padding[0]:-padding[1]]
+    return out
 
 class SmallUResNet(UResNet):
   """ResNet18."""

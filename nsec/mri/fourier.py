@@ -15,15 +15,15 @@ class FFT2:
 
         Parameters
         ----------
-        img: np.ndarray
+        img: jnp.ndarray
             input 2D array with the same shape as the mask.
 
         Returns
         -------
-        x: np.ndarray
+        x: jnp.ndarray
             masked Fourier transform of the input image.
         """
-        fft_coeffs = np.fft.ifftshift(np.fft.fft2(np.fft.fftshift(img, axes=(-2, -1)), norm='ortho'), axes=(-2, -1))
+        fft_coeffs = jnp.fft.ifftshift(jnp.fft.fft2(jnp.fft.fftshift(img, axes=(-2, -1)), norm='ortho'), axes=(-2, -1))
         return self.mask * fft_coeffs
 
     def adj_op(self, x):
@@ -32,26 +32,26 @@ class FFT2:
 
         Parameters
         ----------
-        x: np.ndarray
+        x: jnp.ndarray
             masked Fourier transform data.
 
         Returns
         -------
-        img: np.ndarray
+        img: jnp.ndarray
             inverse 2D discrete Fourier transform of the input coefficients.
         """
         masked_fft_coeffs = self.mask * x
-        return np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(masked_fft_coeffs, axes=(-2, -1)), norm='ortho'), axes=(-2, -1))
+        return jnp.fft.fftshift(jnp.fft.ifft2(jnp.fft.ifftshift(masked_fft_coeffs, axes=(-2, -1)), norm='ortho'), axes=(-2, -1))
 
 
 def fft(image):
     """Perform the fft of an image"""
-    fourier_op = FFT2(np.ones_like(image))
+    fourier_op = FFT2(jnp.ones_like(image))
     kspace = fourier_op.op(image)
     return kspace
 
 def ifft(kspace):
     """Perform the ifft of an image"""
-    fourier_op = FFT2(np.ones_like(kspace))
+    fourier_op = FFT2(jnp.ones_like(kspace))
     image = fourier_op.adj_op(kspace)
     return image

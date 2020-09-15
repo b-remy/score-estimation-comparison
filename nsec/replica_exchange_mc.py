@@ -658,7 +658,8 @@ class ReplicaExchangeMC(kernel_base.TransitionKernel):
           inverse_temperatures,
           swapped_inverse_temperatures,
           is_swap_accepted_mask,
-          _swap_tensor)
+          _swap_tensor,
+          post_swap_replica_states, partial(self.target_log_prob_fn, sigma=inverse_temperatures))
 
       if mcmc_util.is_list_like(current_state):
         # We *always* canonicalize the states in the kernel results.
@@ -775,6 +776,7 @@ class ReplicaExchangeMC(kernel_base.TransitionKernel):
           inverse_temperatures,
           is_swap_accepted[0],
           lambda x: x,
+          replica_states, None
       )
 
       return ReplicaExchangeMCKernelResults(
@@ -811,7 +813,9 @@ def _maybe_embed_swaps_validation(swaps, null_swaps, validate_args):
 def _make_post_swap_replica_results(pre_swap_replica_results,
                                     inverse_temperatures,
                                     swapped_inverse_temperatures,
-                                    is_swap_accepted_mask, swap_tensor_fn):
+                                    is_swap_accepted_mask, swap_tensor_fn,
+                                    post_swap_states,
+                                    target_log_prob_fn):
   """Return Kernel results, valid for post-swap states.
 
   Fields will be removed if they cannot be updated in an unambiguous manner.
@@ -859,7 +863,7 @@ def _make_post_swap_replica_results(pre_swap_replica_results,
   # After using swap_tensor_fn on "values", values will be multiplied by the
   # swapped_inverse_temperatures.  We need it to be multiplied instead by the
   # inverse temperature corresponding to its index.
-  it_ratio_raw = inverse_temperatures / swapped_inverse_temperatures
+  it_ratio_raw = jnp.ones_like(inverse_temperatures)
   it_ratio = tf.where(
       is_swap_accepted_mask,
       mcmc_util.left_justified_expand_dims_to(it_ratio_raw,
@@ -869,32 +873,44 @@ def _make_post_swap_replica_results(pre_swap_replica_results,
   def _swap_then_retemper(x):
     x, is_multipart = mcmc_util.prepare_state_parts(x)
     it_ratio_ = mcmc_util.left_justified_expand_dims_like(it_ratio, x[0])
-    x = [swap_tensor_fn(x_part) * it_ratio_ for x_part in x]
+    x = [x_part * it_ratio_ for x_part in x]
     if not is_multipart:
       x = x[0]
     return x
 
-  if isinstance(kr.accepted_results,
-                hmc.UncalibratedHamiltonianMonteCarloKernelResults):
-    kr = kr._replace(
-        accepted_results=kr.accepted_results._replace(
-            target_log_prob=_swap_then_retemper(
-                kr.accepted_results.target_log_prob),
-            grads_target_log_prob=_swap_then_retemper(
-                kr.accepted_results.grads_target_log_prob)))
-  elif isinstance(kr.accepted_results,
-                  random_walk_metropolis.UncalibratedRandomWalkResults):
-    kr = kr._replace(
-        accepted_results=kr.accepted_results._replace(
-            target_log_prob=_swap_then_retemper(
-                kr.accepted_results.target_log_prob)))
+  if target_log_prob_fn is None:
+    return kr
   else:
-    # TODO(b/143702650) Handle other kernels.
-    raise NotImplementedError(
-        'Only HMC and RWMH Kernels are handled at this time. Please file a '
-        'request with the TensorFlow Probability team.')
+    if mcmc_util.is_list_like(post_swap_states):
+      post_swap_states = post_swap_states[0]
 
-  return kr
+    [
+      swapped_target_log_prob,
+      swapped_grads_target_log_prob,
+    ] = mcmc_util.maybe_call_fn_and_grads(target_log_prob_fn,
+                                          post_swap_states)
+
+    if isinstance(kr.accepted_results,
+                  hmc.UncalibratedHamiltonianMonteCarloKernelResults):
+      kr = kr._replace(
+          accepted_results=kr.accepted_results._replace(
+              target_log_prob=_swap_then_retemper(
+                  swapped_target_log_prob),
+              grads_target_log_prob=_swap_then_retemper(
+                  swapped_grads_target_log_prob)))
+    elif isinstance(kr.accepted_results,
+                    random_walk_metropolis.UncalibratedRandomWalkResults):
+      kr = kr._replace(
+          accepted_results=kr.accepted_results._replace(
+              target_log_prob=_swap_then_retemper(
+                  swapped_target_log_prob)))
+    else:
+      # TODO(b/143702650) Handle other kernels.
+      raise NotImplementedError(
+          'Only HMC and RWMH Kernels are handled at this time. Please file a '
+          'request with the TensorFlow Probability team.')
+
+    return kr
 
 
 # TODO(b/111801087): Use a standardized API, when available.

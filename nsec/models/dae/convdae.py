@@ -19,16 +19,18 @@ class BlockV1(hk.Module):
       use_projection: bool,
       bn_config: Mapping[str, float],
       bottleneck: bool,
+      use_bn: bool = True,
       transpose: bool = False,
       name: Optional[str] = None
   ):
     super().__init__(name=name)
     self.use_projection = use_projection
-
-    bn_config = dict(bn_config)
-    bn_config.setdefault("create_scale", True)
-    bn_config.setdefault("create_offset", True)
-    bn_config.setdefault("decay_rate", 0.999)
+    self.use_bn = use_bn
+    if self.use_bn:
+        bn_config = dict(bn_config)
+        bn_config.setdefault("create_scale", True)
+        bn_config.setdefault("create_offset", True)
+        bn_config.setdefault("decay_rate", 0.999)
 
     if transpose:
       maybe_transposed_conv = hk.Conv2DTranspose
@@ -40,44 +42,49 @@ class BlockV1(hk.Module):
           output_channels=channels,
           kernel_shape=1,
           stride=stride,
-          with_bias=False,
+          with_bias=not self.use_bn,
           padding="SAME",
           name="shortcut_conv")
-
-      self.proj_batchnorm = hk.BatchNorm(name="shortcut_batchnorm", **bn_config)
+      if self.use_bn:
+          self.proj_batchnorm = hk.BatchNorm(name="shortcut_batchnorm", **bn_config)
 
     channel_div = 4 if bottleneck else 1
     conv_0 = hk.Conv2D(
         output_channels=channels // channel_div,
         kernel_shape=1 if bottleneck else 3,
         stride=1,
-        with_bias=False,
+        with_bias=not self.use_bn,
         padding="SAME",
         name="conv_0")
-    bn_0 = hk.BatchNorm(name="batchnorm_0", **bn_config)
+    if self.use_bn:
+        bn_0 = hk.BatchNorm(name="batchnorm_0", **bn_config)
 
     conv_1 = maybe_transposed_conv(
         output_channels=channels // channel_div,
         kernel_shape=3,
         stride=stride,
-        with_bias=False,
+        with_bias=not self.use_bn,
         padding="SAME",
         name="conv_1")
-
-    bn_1 = hk.BatchNorm(name="batchnorm_1", **bn_config)
-    layers = ((conv_0, bn_0), (conv_1, bn_1))
+    if self.use_bn:
+        bn_1 = hk.BatchNorm(name="batchnorm_1", **bn_config)
+        layers = ((conv_0, bn_0), (conv_1, bn_1))
+    else:
+        layers = ((conv_0, None), (conv_1, None))
 
     if bottleneck:
       conv_2 = hk.Conv2D(
           output_channels=channels,
           kernel_shape=1,
           stride=1,
-          with_bias=False,
+          with_bias=not self.use_bn,
           padding="SAME",
           name="conv_2")
-
-      bn_2 = hk.BatchNorm(name="batchnorm_2", scale_init=jnp.zeros, **bn_config)
-      layers = layers + ((conv_2, bn_2),)
+      if self.use_bn:
+          bn_2 = hk.BatchNorm(name="batchnorm_2", scale_init=jnp.zeros, **bn_config)
+          layers = layers + ((conv_2, bn_2),)
+      else:
+          layers = layers + ((conv_2, None),)
 
     self.layers = layers
 
@@ -86,11 +93,13 @@ class BlockV1(hk.Module):
 
     if self.use_projection:
       shortcut = self.proj_conv(shortcut)
-      shortcut = self.proj_batchnorm(shortcut, is_training, test_local_stats)
+      if self.use_bn:
+          shortcut = self.proj_batchnorm(shortcut, is_training, test_local_stats)
 
     for i, (conv_i, bn_i) in enumerate(self.layers):
       out = conv_i(out)
-      out = bn_i(out, is_training, test_local_stats)
+      if self.use_bn:
+          out = bn_i(out, is_training, test_local_stats)
       if i < len(self.layers) - 1:  # Don't apply relu on last layer
         out = jax.nn.relu(out)
 
@@ -108,6 +117,7 @@ class BlockGroup(hk.Module):
       bottleneck: bool,
       use_projection: bool,
       transpose: bool,
+      use_bn: bool = True,
       name: Optional[str] = None,
   ):
     super().__init__(name=name)
@@ -123,6 +133,7 @@ class BlockGroup(hk.Module):
                     bottleneck=bottleneck,
                     bn_config=bn_config,
                     transpose=transpose,
+                    use_bn=use_bn,
                     name="block_%d" % (i)))
 
   def __call__(self, inputs, is_training, test_local_stats):
@@ -142,6 +153,7 @@ class UResNet(hk.Module):
                bottleneck,
                channels_per_group,
                use_projection,
+               use_bn=True,
                name=None):
     """Constructs a Residual UNet model based on a traditional ResNet.
     Args:
@@ -158,11 +170,13 @@ class UResNet(hk.Module):
         of channels used for each block in each group.
       use_projection: A sequence of length 4 that indicates whether each
         residual block should use projection.
+      use_bn: Whether the network should use batch normalisation. Defaults to
+        ``True``.
       name: Name of the module.
     """
     super().__init__(name=name)
     self.resnet_v2 = False
-
+    self.use_bn = use_bn
     bn_config = dict(bn_config or {})
     bn_config.setdefault("decay_rate", 0.9)
     bn_config.setdefault("eps", 1e-5)
@@ -177,11 +191,11 @@ class UResNet(hk.Module):
         output_channels=32,
         kernel_shape=7,
         stride=2,
-        with_bias=False,
+        with_bias=not self.use_bn,
         padding="SAME",
         name="initial_conv")
 
-    if not self.resnet_v2:
+    if not self.resnet_v2 and self.use_bn:
       self.initial_batchnorm = hk.BatchNorm(name="initial_batchnorm",
                                             **bn_config)
 
@@ -197,6 +211,7 @@ class UResNet(hk.Module):
                      bottleneck=bottleneck,
                      use_projection=use_projection[i],
                      transpose=False,
+                     use_bn=self.use_bn,
                      name="block_group_%d" % (i)))
 
     for i in range(4):
@@ -208,13 +223,14 @@ class UResNet(hk.Module):
                      bottleneck=bottleneck,
                      use_projection=use_projection[i],
                      transpose=True,
+                     use_bn=self.use_bn,
                      name="up_block_group_%d" % (i)))
 
-    if self.resnet_v2:
+    if self.resnet_v2 and self.use_bn:
       self.final_batchnorm = hk.BatchNorm(name="final_batchnorm", **bn_config)
 
     self.final_upconv = hk.Conv2DTranspose(output_channels=1,
-                                kernel_shape=32,
+                                kernel_shape=5,
                                 stride=2,
                                 padding="SAME",
                                 name="final_upconv")
@@ -251,6 +267,7 @@ class SmallUResNet(UResNet):
 
   def __init__(self,
                bn_config: Optional[Mapping[str, float]] = None,
+               use_bn: bool = True,
                name: Optional[str] = None):
     """Constructs a ResNet model.
     Args:
@@ -258,6 +275,8 @@ class SmallUResNet(UResNet):
         passed on to the :class:`~haiku.BatchNorm` layers.
       resnet_v2: Whether to use the v1 or v2 ResNet implementation. Defaults
         to ``False``.
+      use_bn: Whether the network should use batch normalisation. Defaults to
+        ``True``.
       name: Name of the module.
     """
     super().__init__(blocks_per_group=(2, 2, 2, 2),
@@ -265,4 +284,5 @@ class SmallUResNet(UResNet):
                      bottleneck=False,
                      channels_per_group=(32, 64, 128, 128),
                      use_projection=(True, True, True, True),
+                     use_bn=use_bn,
                      name=name)

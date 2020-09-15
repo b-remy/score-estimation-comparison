@@ -17,12 +17,12 @@ import tensorflow_probability as tfp; tfp = tfp.experimental.substrates.jax
 from tqdm import tqdm
 
 os.environ['SINGLECOIL_TRAIN_DIR'] = 'singlecoil_train/singlecoil_train/'
-from tf_fastmri_data.datasets.noisy import NoisyFastMRIDatasetBuilder
+from tf_fastmri_data.datasets.noisy import ComplexNoisyFastMRIDatasetBuilder
 from nsec.models.dae.convdae import SmallUResNet
 
 
-def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=int(1e4), lr=1e-4):
-    train_mri_ds = NoisyFastMRIDatasetBuilder(
+def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=int(1e3), lr=1e-3):
+    train_mri_ds = ComplexNoisyFastMRIDatasetBuilder(
         dataset='train',
         brain=False,
         scale_factor=1e6,
@@ -31,6 +31,7 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
         noise_mode='gaussian',
         residual_learning=True,
         batch_size=batch_size,
+        kspace_size=(320, 320),
         slice_random=True,
     )
     mri_images_iterator = train_mri_ds.preprocessed_ds.take(n_steps).as_numpy_iterator()
@@ -39,8 +40,12 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
     # here the noise_realisation is the full one, not the epsilon from the standard normal law
     print('Finished building dataset, now initializing jax')
     def forward(x, s, is_training=False):
-        denoiser = SmallUResNet()
-        return denoiser(x, s, is_training=is_training)
+        denoiser = SmallUResNet(use_bn=True, n_output_channels=2)
+        x = jnp.concatenate([x.real, x.imag], axis=-1)
+        denoised_float = denoiser(x, s, is_training=is_training)
+        denoised_complex = denoised_float[..., 0] + 1j * denoised_float[..., 1]
+        denoised_complex = denoised_complex[..., None]
+        return denoised_complex
 
     model = hk.transform_with_state(forward)
 
@@ -49,7 +54,7 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
     optimizer = optix.adam(lr)
     rng_seq = hk.PRNGSequence(42)
 
-    params, state = model.init(next(rng_seq), jnp.zeros((1, 32, 32, 1)), jnp.zeros((1, 1, 1, 1)), is_training=True)
+    params, state = model.init(next(rng_seq), jnp.zeros((1, 32, 32, 1), dtype=jnp.complex64), jnp.zeros((1, 1, 1, 1)), is_training=True)
     opt_state = optimizer.init(params)
 
     _, sn_state = sn_fn.init(jax.random.PRNGKey(1), params)
@@ -60,7 +65,9 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
         # this to stick to the original shape of the noise power
         s = s[..., None, None, None]
         res, state = model.apply(params, state, rng_key, x, s, is_training=True)
-        loss = jnp.mean((su / s + s * res)**2)
+        real_loss = jnp.mean((su.real / s + s * res.real)**2)
+        imag_loss = jnp.mean((su.imag / s + s * res.imag)**2)
+        loss = real_loss + imag_loss
         return loss, state
 
     @jax.jit
@@ -93,9 +100,9 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
 
 @click.command()
 @click.option('batch_size', '-bs', type=int, default=32)
-@click.option('n_steps', '-n', type=int, default=int(1e4))
+@click.option('n_steps', '-n', type=int, default=int(1e3))
 @click.option('noise_power_spec', '-nps', type=float, default=30)
-@click.option('lr', '-lr', type=float, default=1e-4)
+@click.option('lr', '-lr', type=float, default=1e-3)
 def train_denoiser_score_matching_click(batch_size, n_steps, noise_power_spec, lr):
     train_denoiser_score_matching(
         batch_size=batch_size,

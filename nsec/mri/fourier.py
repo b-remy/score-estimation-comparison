@@ -9,6 +9,7 @@ class FFT2:
     def __init__(self, mask):
         self.mask = mask
         self.shape = mask.shape
+        self.scaling_norm = np.sqrt(np.prod(mask.shape[-2:]))
 
     def op(self, img):
         """ This method calculates the masked Fourier transform of a 2-D image.
@@ -23,7 +24,9 @@ class FFT2:
         x: jnp.ndarray
             masked Fourier transform of the input image.
         """
-        fft_coeffs = jnp.fft.ifftshift(jnp.fft.fft2(jnp.fft.fftshift(img, axes=(-2, -1)), norm='ortho'), axes=(-2, -1))
+
+        fft_coeffs = jnp.fft.ifftshift(jnp.fft.fft2(jnp.fft.fftshift(img, axes=(-2, -1))), axes=(-2, -1))
+        fft_coeffs = fft_coeffs / self.scaling_norm
         return self.mask * fft_coeffs
 
     def adj_op(self, x):
@@ -41,6 +44,7 @@ class FFT2:
             inverse 2D discrete Fourier transform of the input coefficients.
         """
         masked_fft_coeffs = self.mask * x
+        masked_fft_coeffs = masked_fft_coeffs * self.scaling_norm
         return jnp.fft.fftshift(jnp.fft.ifft2(jnp.fft.ifftshift(masked_fft_coeffs, axes=(-2, -1)), norm='ortho'), axes=(-2, -1))
 
 

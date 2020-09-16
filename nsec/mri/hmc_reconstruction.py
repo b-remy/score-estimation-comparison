@@ -2,6 +2,7 @@ from functools import partial
 import os
 from pathlib import Path
 
+import click
 os.environ['XLA_FLAGS']='--xla_gpu_cuda_data_dir=/gpfslocalsys/cuda/10.1.2'
 import jax
 import jax.numpy as jnp
@@ -99,3 +100,19 @@ def hmc_mri_reconstruction(noise_power_spec=30, num_results=int(1e4), num_burnin
         plt.subplot(10,10,10*i+j+1)
         plt.imshow(jnp.linalg.norm(samples_shmc[(10*i+j)].reshape((320, -1, 2)), axis=-1))
         plt.axis('off')
+
+
+@click.command()
+@click.option('noise_power_spec', '-nps', type=float, default=30)
+@click.option('num_results', '-n', type=int, default=int(1e4))
+@click.option('num_burnin_steps', '-nb', type=int, default=10)
+def hmc_mri_reconstruction_click(noise_power_spec, num_results, num_burnin_steps):
+    hmc_mri_reconstruction(
+        noise_power_spec=noise_power_spec,
+        num_results=num_results,
+        num_burnin_steps=num_burnin_steps,
+    )
+
+
+if __name__ == '__main__':
+    hmc_mri_reconstruction_click()

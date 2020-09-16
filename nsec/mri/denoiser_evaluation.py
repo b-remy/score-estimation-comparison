@@ -16,7 +16,7 @@ except IndexError:
 from nsec.mri.model import get_model
 from tf_fastmri_data.datasets.noisy import ComplexNoisyFastMRIDatasetBuilder
 
-def evaluate_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_plots=2):
+def evaluate_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_plots=2, contrast=None):
     val_mri_ds = ComplexNoisyFastMRIDatasetBuilder(
         dataset='val',
         brain=False,
@@ -28,6 +28,7 @@ def evaluate_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_plots
         batch_size=batch_size,
         kspace_size=(320, 320),
         slice_random=True,
+        contrast=contrast,
     )
     mri_images_iterator = val_mri_ds.preprocessed_ds.take(1).as_numpy_iterator()
 
@@ -63,11 +64,13 @@ def evaluate_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_plots
 @click.option('batch_size', '-bs', type=int, default=32)
 @click.option('n_plots', '-n', type=int, default=2)
 @click.option('noise_power_spec', '-nps', type=float, default=30)
-def evaluate_denoiser_score_matching_click(batch_size, n_plots, noise_power_spec):
+@click.option('contrast', '-c', type=str, default=None)
+def evaluate_denoiser_score_matching_click(batch_size, n_plots, noise_power_spec, contrast):
     evaluate_denoiser_score_matching(
         batch_size=batch_size,
         n_plots=n_plots,
         noise_power_spec=noise_power_spec,
+        contrast=contrast,
     )
 
 

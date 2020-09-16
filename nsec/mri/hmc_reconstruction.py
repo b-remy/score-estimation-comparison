@@ -22,6 +22,7 @@ from nsec.samplers import ScoreHamiltonianMonteCarlo
 from tf_fastmri_data.datasets.cartesian import CartesianFastMRIDatasetBuilder
 
 def hmc_mri_reconstruction(noise_power_spec=30, num_results=int(1e4), num_burnin_steps=10):
+    print('Getting model (jax init)')
     model, _, _, _, _, _, _, rng_seq = get_model(opt=False)
     with open(str(Path(os.environ['CHECKPOINTS_DIR']) / f'conv-dae-L2-mri-{noise_power_spec}.pckl'), 'rb') as file:
         params, state, _ = pickle.load(file)
@@ -77,7 +78,7 @@ def hmc_mri_reconstruction(noise_power_spec=30, num_results=int(1e4), num_burnin
         )
         return samples_shmc, is_accepted_shmc
 
-
+    print('Finished getting model, now building dataset and getting data')
     val_mri_recon_ds = CartesianFastMRIDatasetBuilder(
         dataset='val',
         af=4,
@@ -90,9 +91,9 @@ def hmc_mri_reconstruction(noise_power_spec=30, num_results=int(1e4), num_burnin
     (kspace, mask), image = next(val_mri_recon_iterator)
     fourier_obj = FFT2(jnp.tile(mask, [1, kspace.shape[1], 1]))
     x = fourier_obj.adj_op(kspace[..., 0])[..., None]
-
+    print('Finished getting data, now sampling')
     samples_shmc, is_accepted_shmc = get_samples(x, kspace[0, ..., 0], mask[0], 'data_consistency')
-
+    print('Finished sampling')
     samples_shmc = samples_shmc[jnp.where(is_accepted_shmc)[0]]
     plt.figure(figsize=(9, 5))
     for i in range(10):

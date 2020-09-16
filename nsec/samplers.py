@@ -34,7 +34,7 @@ class ScoreUncalibratedHamiltonianMonteCarlo(tfp.mcmc.UncalibratedHamiltonianMon
     def fake_logp_jvp(primals, tangents):
       x, = primals
       x_dot, = tangents
-      primal_out = fake_logp(x).astype(dtype)
+      primal_out = jnp.array(fake_logp(x), dtype=dtype)
       s = target_score_fn(x)
       tangent_out = x_dot.dot(s)
       return primal_out, tangent_out
@@ -85,7 +85,7 @@ class ScoreUncalibratedLangevin(tfp.mcmc.UncalibratedLangevin):
     def fake_logp_jvp(primals, tangents):
       x, = primals
       x_dot, = tangents
-      primal_out = fake_logp(x).astype(dtype)
+      primal_out = jnp.array(fake_logp(x), dtype=dtype)
       s = target_score_fn(x)
       tangent_out = x_dot.dot(s)
       return primal_out, tangent_out

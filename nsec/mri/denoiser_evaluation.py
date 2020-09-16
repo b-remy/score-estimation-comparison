@@ -14,7 +14,6 @@ except IndexError:
     pass
 
 from nsec.mri.model import get_model
-os.environ['SINGLECOIL_TRAIN_DIR'] = 'singlecoil_train/singlecoil_train/'
 from tf_fastmri_data.datasets.noisy import ComplexNoisyFastMRIDatasetBuilder
 
 def evaluate_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_plots=2):

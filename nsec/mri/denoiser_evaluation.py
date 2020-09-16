@@ -33,3 +33,17 @@ def evaluate_denoiser_score_matching(batch_size=32, noise_power_spec=30):
 
     batch = next(mri_images_iterator)
     print(loss_fn(params, state, next(rng_seq), batch)[0])
+
+
+@click.command()
+@click.option('batch_size', '-bs', type=int, default=32)
+@click.option('noise_power_spec', '-nps', type=float, default=30)
+def evaluate_denoiser_score_matching_click(batch_size, noise_power_spec):
+    evaluate_denoiser_score_matching(
+        batch_size=batch_size,
+        noise_power_spec=noise_power_spec,
+    )
+
+
+if __name__ == '__main__':
+    evaluate_denoiser_score_matching_click()

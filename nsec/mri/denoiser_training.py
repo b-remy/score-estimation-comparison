@@ -8,7 +8,6 @@ import jax
 from jax.experimental import optix
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-from nsec.normalization import SNParamsTree as CustomSNParamsTree
 import pickle
 import tensorflow as tf
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -19,6 +18,7 @@ from tqdm import tqdm
 os.environ['SINGLECOIL_TRAIN_DIR'] = 'singlecoil_train/singlecoil_train/'
 from tf_fastmri_data.datasets.noisy import ComplexNoisyFastMRIDatasetBuilder
 from nsec.models.dae.convdae import SmallUResNet
+from nsec.normalization import SNParamsTree as CustomSNParamsTree
 
 
 def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=int(1e3), lr=1e-3):

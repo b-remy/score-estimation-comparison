@@ -94,8 +94,8 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
         plt.loglog(losses[10:])
         plt.show()
 
-    with open(f'conv-dae-L2-mri-{noise_power_spec}.pckl', 'wb') as file:
-        pickle.dump([params, state, sn_state], str(Path(os.environ['CHECKPOINTS_DIR']) / file))
+    with open(str(Path(os.environ['CHECKPOINTS_DIR']) / f'conv-dae-L2-mri-{noise_power_spec}.pckl'), 'wb') as file:
+        pickle.dump([params, state, sn_state], file)
 
 
 @click.command()

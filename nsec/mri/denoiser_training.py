@@ -15,7 +15,7 @@ os.environ['SINGLECOIL_TRAIN_DIR'] = 'singlecoil_train/singlecoil_train/'
 from tf_fastmri_data.datasets.noisy import ComplexNoisyFastMRIDatasetBuilder
 
 
-def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=int(1e3), lr=1e-3):
+def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=int(1e3), lr=1e-3, contrast=None):
     train_mri_ds = ComplexNoisyFastMRIDatasetBuilder(
         dataset='train',
         brain=False,
@@ -27,6 +27,7 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
         batch_size=batch_size,
         kspace_size=(320, 320),
         slice_random=True,
+        contrast=contrast,
     )
     mri_images_iterator = train_mri_ds.preprocessed_ds.take(n_steps).as_numpy_iterator()
     ##### BATCH DEFINITION
@@ -43,7 +44,7 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
         if step%100==0:
             print(step, loss)
         if step%1000==0:
-            with open(str(Path(os.environ['CHECKPOINTS_DIR']) / f'conv-dae-L2-mri-{noise_power_spec}.pckl'), 'wb') as file:
+            with open(str(Path(os.environ['CHECKPOINTS_DIR']) / f'conv-dae-L2-mri-{noise_power_spec}-{contrast}.pckl'), 'wb') as file:
                 pickle.dump([params, state, sn_state], file)
     if False:
         plt.figure()
@@ -58,12 +59,14 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
 @click.option('n_steps', '-n', type=int, default=int(1e3))
 @click.option('noise_power_spec', '-nps', type=float, default=30)
 @click.option('lr', '-lr', type=float, default=1e-3)
-def train_denoiser_score_matching_click(batch_size, n_steps, noise_power_spec, lr):
+@click.option('contrast', '-c', type=str, default=None)
+def train_denoiser_score_matching_click(batch_size, n_steps, noise_power_spec, lr, contrast):
     train_denoiser_score_matching(
         batch_size=batch_size,
         noise_power_spec=noise_power_spec,
         n_steps=n_steps,
         lr=lr,
+        contrast=contrast,
     )
 
 

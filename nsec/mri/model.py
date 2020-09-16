@@ -1,3 +1,5 @@
+import os
+
 import haiku as hk
 os.environ['XLA_FLAGS']='--xla_gpu_cuda_data_dir=/gpfslocalsys/cuda/10.1.2'
 import jax

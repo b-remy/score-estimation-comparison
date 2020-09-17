@@ -14,11 +14,18 @@ except IndexError:
     pass
 
 from nsec.mri.model import get_model
-from tf_fastmri_data.datasets.noisy import ComplexNoisyFastMRIDatasetBuilder
+from tf_fastmri_data.datasets.noisy import ComplexNoisyFastMRIDatasetBuilder, NoisyFastMRIDatasetBuilder
 
-def evaluate_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_plots=2, contrast=None):
+def evaluate_denoiser_score_matching(
+        batch_size=32,
+        noise_power_spec=30,
+        n_plots=2,
+        contrast=None,
+        magnitude_images=False,
+        pad_crop=True,
+    ):
     print('Building dataset')
-    val_mri_ds = ComplexNoisyFastMRIDatasetBuilder(
+    ds_kwargs = dict(
         dataset='val',
         brain=False,
         scale_factor=1e6,
@@ -27,13 +34,26 @@ def evaluate_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_plots
         noise_mode='gaussian',
         residual_learning=True,
         batch_size=batch_size,
-        kspace_size=(320, 320),
         slice_random=True,
         contrast=contrast,
     )
+    if magnitude_images:
+        ds_class = NoisyFastMRIDatasetBuilder
+    else:
+        ds_class = ComplexNoisyFastMRIDatasetBuilder
+        ds_kwargs.update(
+            kspace_size=(320, 320),
+        )
+    val_mri_ds = ds_class(
+        **ds_kwargs
+    )
     mri_images_iterator = val_mri_ds.preprocessed_ds.take(1).as_numpy_iterator()
     print('Finished building dataset, now onto jax init')
-    model, loss_fn, _, _, _, _, _, rng_seq = get_model(opt=False)
+    model, loss_fn, _, _, _, _, _, rng_seq = get_model(
+        opt=False,
+        pad_crop=pad_crop,
+        magnitude_images=magnitude_images,
+    )
     with open(str(Path(os.environ['CHECKPOINTS_DIR']) / f'conv-dae-L2-mri-{noise_power_spec}.pckl'), 'rb') as file:
         params, state, _ = pickle.load(file)
 

@@ -17,6 +17,7 @@ from nsec.mri.model import get_model
 from tf_fastmri_data.datasets.noisy import ComplexNoisyFastMRIDatasetBuilder
 
 def evaluate_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_plots=2, contrast=None):
+    print('Building dataset')
     val_mri_ds = ComplexNoisyFastMRIDatasetBuilder(
         dataset='val',
         brain=False,
@@ -31,13 +32,14 @@ def evaluate_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_plots
         contrast=contrast,
     )
     mri_images_iterator = val_mri_ds.preprocessed_ds.take(1).as_numpy_iterator()
-
+    print('Finished building dataset, now onto jax init')
     model, loss_fn, _, _, _, _, _, rng_seq = get_model(opt=False)
     with open(str(Path(os.environ['CHECKPOINTS_DIR']) / f'conv-dae-L2-mri-{noise_power_spec}.pckl'), 'rb') as file:
         params, state, _ = pickle.load(file)
 
-
+    print('Finished jax init, now getting the data')
     batch = next(mri_images_iterator)
+    print('Got the data, now evaluating the loss')
     print(loss_fn(params, state, next(rng_seq), batch)[0])
 
     score = partial(model.apply, params, state, next(rng_seq))

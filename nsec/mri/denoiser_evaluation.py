@@ -87,12 +87,23 @@ def evaluate_denoiser_score_matching(
 @click.option('n_plots', '-n', type=int, default=2)
 @click.option('noise_power_spec', '-nps', type=float, default=30)
 @click.option('contrast', '-c', type=str, default=None)
-def evaluate_denoiser_score_matching_click(batch_size, n_plots, noise_power_spec, contrast):
+@click.option('magnitude_images', '-m', is_flag=True)
+@click.option('pad_crop', '-pc', is_flag=True)
+def evaluate_denoiser_score_matching_click(
+        batch_size,
+        n_plots,
+        noise_power_spec,
+        contrast,
+        magnitude_images,
+        pad_crop,
+    ):
     evaluate_denoiser_score_matching(
         batch_size=batch_size,
         n_plots=n_plots,
         noise_power_spec=noise_power_spec,
         contrast=contrast,
+        magnitude_images=magnitude_images,
+        pad_crop=pad_crop,
     )
 
 

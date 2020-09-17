@@ -59,13 +59,20 @@ def train_denoiser_score_matching(
 
     losses = []
     print('Finished initializing jax, now onto the optim')
+    additional_info = ""
+    if contrast is not None:
+        additional_info += "_contrast"
+    if pad_crop:
+        additional_info += "_padcrop"
+    if magnitude_images:
+        additional_info += "_mag"
     for step, batch in tqdm(enumerate(mri_images_iterator), total=n_steps, desc='Steps'):
         loss, params, state, sn_state, opt_state = update(params, state, sn_state, next(rng_seq), opt_state, batch)
         losses.append(loss)
         if step%100==0:
             print(step, loss)
-        if step%1000==0:
-            with open(str(Path(os.environ['CHECKPOINTS_DIR']) / f'conv-dae-L2-mri-{noise_power_spec}-{contrast}.pckl'), 'wb') as file:
+        if step+1%1000==0:
+            with open(str(Path(os.environ['CHECKPOINTS_DIR']) / f'conv-dae-L2-mri-{noise_power_spec}(additional_info).pckl'), 'wb') as file:
                 pickle.dump([params, state, sn_state], file)
     if False:
         plt.figure()

@@ -61,7 +61,7 @@ def train_denoiser_score_matching(
     print('Finished initializing jax, now onto the optim')
     additional_info = ""
     if contrast is not None:
-        additional_info += "_contrast"
+        additional_info += f"_{contrast}"
     if pad_crop:
         additional_info += "_padcrop"
     if magnitude_images:

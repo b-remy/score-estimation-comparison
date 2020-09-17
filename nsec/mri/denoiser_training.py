@@ -12,11 +12,19 @@ from tqdm import tqdm
 
 from nsec.mri.model import get_model
 os.environ['SINGLECOIL_TRAIN_DIR'] = 'singlecoil_train/singlecoil_train/'
-from tf_fastmri_data.datasets.noisy import ComplexNoisyFastMRIDatasetBuilder
+from tf_fastmri_data.datasets.noisy import ComplexNoisyFastMRIDatasetBuilder, NoisyFastMRIDatasetBuilder
 
 
-def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=int(1e3), lr=1e-3, contrast=None):
-    train_mri_ds = ComplexNoisyFastMRIDatasetBuilder(
+def train_denoiser_score_matching(
+        batch_size=32,
+        noise_power_spec=30,
+        n_steps=int(1e3),
+        lr=1e-3,
+        contrast=None,
+        magnitude_images=False,
+        pad_crop=True,
+    ):
+    ds_kwargs = dict(
         dataset='train',
         brain=False,
         scale_factor=1e6,
@@ -25,16 +33,29 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
         noise_mode='gaussian',
         residual_learning=True,
         batch_size=batch_size,
-        kspace_size=(320, 320),
         slice_random=True,
         contrast=contrast,
+    )
+    if magnitude_images:
+        ds_class = NoisyFastMRIDatasetBuilder
+    else:
+        ds_class = ComplexNoisyFastMRIDatasetBuilder
+        ds_kwargs.update(
+            kspace_size=(320, 320),
+        )
+    train_mri_ds = ds_class(
+        **ds_kwargs
     )
     mri_images_iterator = train_mri_ds.preprocessed_ds.take(n_steps).as_numpy_iterator()
     ##### BATCH DEFINITION
     # (image_noisy, noise_power), noise_realisation
     # here the noise_realisation is the full one, not the epsilon from the standard normal law
     print('Finished building dataset, now initializing jax')
-    _, _, update, params, state, sn_state, opt_state, rng_seq = get_model(lr=lr)
+    _, _, update, params, state, sn_state, opt_state, rng_seq = get_model(
+        lr=lr,
+        pad_crop=pad_crop,
+        magnitude_images=magnitude_images,
+    )
 
     losses = []
     print('Finished initializing jax, now onto the optim')
@@ -60,13 +81,25 @@ def train_denoiser_score_matching(batch_size=32, noise_power_spec=30, n_steps=in
 @click.option('noise_power_spec', '-nps', type=float, default=30)
 @click.option('lr', '-lr', type=float, default=1e-3)
 @click.option('contrast', '-c', type=str, default=None)
-def train_denoiser_score_matching_click(batch_size, n_steps, noise_power_spec, lr, contrast):
+@click.option('magnitude_images', '-m', is_flag=True)
+@click.option('pad_crop', '-pc', is_flag=True)
+def train_denoiser_score_matching_click(
+        batch_size,
+        n_steps,
+        noise_power_spec,
+        lr,
+        contrast,
+        magnitude_images,
+        pad_crop,
+    ):
     train_denoiser_score_matching(
         batch_size=batch_size,
         noise_power_spec=noise_power_spec,
         n_steps=n_steps,
         lr=lr,
         contrast=contrast,
+        magnitude_images=magnitude_images,
+        pad_crop=pad_crop,
     )
 
 

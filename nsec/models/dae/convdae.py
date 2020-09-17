@@ -293,6 +293,7 @@ class SmallUResNet(UResNet):
   def __init__(self,
                bn_config: Optional[Mapping[str, float]] = None,
                use_bn: bool = True,
+               pad_crop: bool = False,
                n_output_channels: int = 1,
                name: Optional[str] = None):
     """Constructs a ResNet model.
@@ -313,5 +314,6 @@ class SmallUResNet(UResNet):
                      channels_per_group=(32, 64, 128, 128),
                      use_projection=(True, True, True, True),
                      use_bn=use_bn,
+                     pad_crop=pad_crop,
                      n_output_channels=n_output_channels,
                      name=name)

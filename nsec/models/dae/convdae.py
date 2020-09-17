@@ -254,11 +254,26 @@ class UResNet(hk.Module):
     if self.resnet_v2 and self.use_bn:
       self.final_batchnorm = hk.BatchNorm(name="final_batchnorm", **bn_config)
 
-    self.final_conv = hk.Conv2DTranspose(output_channels=self.n_output_channels,
+    self.final_up_conv = hk.Conv2DTranspose(output_channels=channels_per_group[0]*self.n_output_channels//2,
                                 kernel_shape=5,
                                 stride=2,
                                 padding="SAME",
-                                name="final_conv")
+                                name="final_up_conv")
+    self.antepenultian_conv = hk.Conv2D(
+        output_channels=channels_per_group[0]*self.n_output_channels//2,
+        kernel_shape=3,
+        stride=1,
+        padding='SAME',
+        name='antepenultian_conv',
+    )
+    self.final_conv = hk.Conv2D(
+        output_channels=self.n_output_channels,
+        kernel_shape=3,
+        stride=1,
+        padding='SAME',
+        name='final_conv',
+    )
+
 
   def __call__(self, inputs, condition, is_training, test_local_stats=False):
     out = inputs
@@ -281,7 +296,15 @@ class UResNet(hk.Module):
       out = jnp.concatenate([out, levels[-i-1]],axis=-1)
 
     # Second to last upsampling, merging with input branch
-    out = self.final_conv(out)/(jnp.abs(condition)*jnp.ones_like(pad_for_pool(inputs, 4)[0])+1e-3)
+    out = self.final_up_conv(out)
+    out = self.antepenultian_conv(out)
+    out = jax.nn.relu(out)
+    out = self.final_conv(out)
+    if self.pad_crop:
+        condition_normalisation = (jnp.abs(condition)*jnp.ones_like(pad_for_pool(inputs, 4)[0])+1e-3)
+    else:
+        condition_normalisation = (jnp.abs(condition)*jnp.ones_like(inputs)+1e-3)
+    out = out / condition_normalisation
     if self.pad_crop:
         if not jnp.sum(padding) == 0:
             out = out[:, :, padding[0]:-padding[1]]

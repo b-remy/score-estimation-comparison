@@ -10,22 +10,34 @@ from nsec.models.dae.convdae import SmallUResNet
 from nsec.normalization import SNParamsTree as CustomSNParamsTree
 
 
-def get_model(opt=True, lr=1e-3):
+def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True):
     def forward(x, s, is_training=False):
-        denoiser = SmallUResNet(use_bn=True, n_output_channels=2)
-        x = jnp.concatenate([x.real, x.imag], axis=-1)
+        if magnitude_images:
+            n_out = 1
+        else:
+            n_out = 2
+        denoiser = SmallUResNet(use_bn=True, n_output_channels=n_out, pad_crop=pad_crop)
+        if not magnitude_images:
+            x = jnp.concatenate([x.real, x.imag], axis=-1)
         denoised_float = denoiser(x, s, is_training=is_training)
-        denoised_complex = denoised_float[..., 0] + 1j * denoised_float[..., 1]
-        denoised_complex = denoised_complex[..., None]
-        return denoised_complex
+        if not magnitude_images:
+            denoised_complex = denoised_float[..., 0] + 1j * denoised_float[..., 1]
+            denoised_complex = denoised_complex[..., None]
+            out = denoised_complex
+        else:
+            out = denoised_float
+        return out
 
     model = hk.transform_with_state(forward)
 
     sn_fn = hk.transform_with_state(lambda x: CustomSNParamsTree(ignore_regex='[^?!.]*b$',val=2.)(x))
 
     rng_seq = hk.PRNGSequence(42)
-
-    params, state = model.init(next(rng_seq), jnp.zeros((1, 32, 32, 1), dtype=jnp.complex64), jnp.zeros((1, 1, 1, 1)), is_training=True)
+    if magnitude_images:
+        init_dtype = jnp.float32
+    else:
+        init_dtype = jnp.complex64
+    params, state = model.init(next(rng_seq), jnp.zeros((1, 32, 32, 1), dtype=init_dtype), jnp.zeros((1, 1, 1, 1)), is_training=True)
     if opt:
         optimizer = optix.adam(lr)
         opt_state = optimizer.init(params)
@@ -40,9 +52,12 @@ def get_model(opt=True, lr=1e-3):
         # this to stick to the original shape of the noise power
         s = s[..., None, None, None]
         res, state = model.apply(params, state, rng_key, x, s, is_training=True)
-        real_loss = jnp.mean((su.real / s + s * res.real)**2)
-        imag_loss = jnp.mean((su.imag / s + s * res.imag)**2)
-        loss = real_loss + imag_loss
+        if not magnitude_images:
+            real_loss = jnp.mean((su.real / s + s * res.real)**2)
+            imag_loss = jnp.mean((su.imag / s + s * res.imag)**2)
+            loss = real_loss + imag_loss
+        else:
+            loss = jnp.mean((su / s + s * res)**2)
         return loss, state
 
     @jax.jit

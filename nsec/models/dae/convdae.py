@@ -172,6 +172,7 @@ class UResNet(hk.Module):
                use_projection,
                n_output_channels=1,
                use_bn=True,
+               pad_crop=False,
                name=None):
     """Constructs a Residual UNet model based on a traditional ResNet.
     Args:
@@ -192,11 +193,14 @@ class UResNet(hk.Module):
         the case of a complex denoising. Defaults to 1.
       use_bn: Whether the network should use batch normalisation. Defaults to
         ``True``.
+      pad_crop: Whether to use cropping/padding to make sure the images can be
+        downsampled and upsampled correctly. Defaults to ``False``.
       name: Name of the module.
     """
     super().__init__(name=name)
     self.resnet_v2 = False
     self.use_bn = use_bn
+    self.pad_crop = pad_crop
     self.n_output_channels = n_output_channels
     bn_config = dict(bn_config or {})
     bn_config.setdefault("decay_rate", 0.9)
@@ -259,7 +263,8 @@ class UResNet(hk.Module):
   def __call__(self, inputs, condition, is_training, test_local_stats=False):
     out = inputs
     out = jnp.concatenate([out, condition*jnp.ones_like(out)[...,[0]]], axis=-1)
-    out, padding = pad_for_pool(inputs, 4)
+    if self.pad_crop:
+        out, padding = pad_for_pool(inputs, 4)
     out = self.initial_conv(out)
 
     # Decreasing resolution
@@ -277,8 +282,9 @@ class UResNet(hk.Module):
 
     # Second to last upsampling, merging with input branch
     out = self.final_conv(out)/(jnp.abs(condition)*jnp.ones_like(pad_for_pool(inputs, 4)[0])+1e-3)
-    if not jnp.sum(padding) == 0:
-        out = out[:, :, padding[0]:-padding[1]]
+    if self.pad_crop:
+        if not jnp.sum(padding) == 0:
+            out = out[:, :, padding[0]:-padding[1]]
     return out
 
 class SmallUResNet(UResNet):

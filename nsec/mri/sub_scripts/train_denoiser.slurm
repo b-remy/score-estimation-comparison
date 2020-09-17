@@ -27,6 +27,6 @@ export CHECKPOINTS_DIR=$SCRATCH/
 
 opt[0]="-m"
 opt[2]=""
-opt[1]="-p"
+opt[1]="-pc"
 
 srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]} -n 7000 -c CORPD_FBK

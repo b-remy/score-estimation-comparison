@@ -21,7 +21,7 @@ from nsec.mri.model import get_model
 from nsec.samplers import ScoreHamiltonianMonteCarlo
 from tf_fastmri_data.datasets.cartesian import CartesianFastMRIDatasetBuilder
 
-def hmc_mri_reconstruction(noise_power_spec=30, num_results=int(1e4), num_burnin_steps=10):
+def hmc_mri_reconstruction(noise_power_spec=30, num_results=int(1e4), num_burnin_steps=10, temp=1, l=1, step_size=1e-2):
     print('Getting model (jax init)')
     model, _, _, _, _, _, _, rng_seq = get_model(opt=False)
     with open(str(Path(os.environ['CHECKPOINTS_DIR']) / f'conv-dae-L2-mri-{noise_power_spec}.pckl'), 'rb') as file:
@@ -38,7 +38,7 @@ def hmc_mri_reconstruction(noise_power_spec=30, num_results=int(1e4), num_burnin
         x_reshaped = x_reshaped[..., 0] + 1j * x_reshaped[..., 1]
         x_reshaped = x_reshaped[..., None]
 
-        prior = score(x_reshaped, jnp.zeros((1,1,1,1))+1e-2, is_training=False)[0]
+        prior = score(x_reshaped, jnp.zeros((1,1,1,1))+temp, is_training=False)[0]
         if mode == 'prior':
             out = prior
         elif mode == 'data_consistency':
@@ -47,11 +47,7 @@ def hmc_mri_reconstruction(noise_power_spec=30, num_results=int(1e4), num_burnin
             fourier_obj = FFT2(mask)
             data_consistency = fourier_obj.adj_op(fourier_obj.op(x_reshaped[..., 0]) - y)
             data_consistency = data_consistency[..., None]
-            ####
-            # NOTE
-            ####
-            # how to deal with scaling in the subsequent addition?
-            out = prior + data_consistency
+            out = prior + l * data_consistency
         out_float = jnp.concatenate([out.real, out.imag], axis=-1)
         out_reshaped = out_float.reshape((w*h*2,))
         return out_reshaped
@@ -65,7 +61,7 @@ def hmc_mri_reconstruction(noise_power_spec=30, num_results=int(1e4), num_burnin
                 target_score_fn=partial(score_fn, y=y, mask=mask, mode=mode),
                 num_leapfrog_steps=4,
                 num_delta_logp_steps=4,
-                step_size=0.01,
+                step_size=step_size,
         )
         x_float = jnp.concatenate([x.real, x.imag], axis=-1)
         samples_shmc, is_accepted_shmc = tfp.mcmc.sample_chain(
@@ -105,13 +101,19 @@ def hmc_mri_reconstruction(noise_power_spec=30, num_results=int(1e4), num_burnin
 
 @click.command()
 @click.option('noise_power_spec', '-nps', type=float, default=30)
+@click.option('temp', '-t', type=float, default=1)
+@click.option('l', '-l', type=float, default=1)
+@click.option('step_size', '-s', type=float, default=1e-2)
 @click.option('num_results', '-n', type=int, default=int(1e4))
 @click.option('num_burnin_steps', '-nb', type=int, default=10)
-def hmc_mri_reconstruction_click(noise_power_spec, num_results, num_burnin_steps):
+def hmc_mri_reconstruction_click(noise_power_spec, num_results, num_burnin_steps, temp, l, step_size):
     hmc_mri_reconstruction(
         noise_power_spec=noise_power_spec,
         num_results=num_results,
         num_burnin_steps=num_burnin_steps,
+        temp=temp,
+        l=l,
+        step_size=step_size,
     )
 
 

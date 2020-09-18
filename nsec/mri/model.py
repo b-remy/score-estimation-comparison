@@ -10,7 +10,7 @@ from nsec.models.dae.convdae import SmallUResNet
 from nsec.normalization import SNParamsTree as CustomSNParamsTree
 
 
-def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True):
+def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2.):
     def forward(x, s, is_training=False):
         if magnitude_images:
             n_out = 1
@@ -30,7 +30,7 @@ def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True):
 
     model = hk.transform_with_state(forward)
 
-    sn_fn = hk.transform_with_state(lambda x: CustomSNParamsTree(ignore_regex='[^?!.]*b$',val=2.)(x))
+    sn_fn = hk.transform_with_state(lambda x: CustomSNParamsTree(ignore_regex='[^?!.]*b$',val=sn_val)(x))
 
     rng_seq = hk.PRNGSequence(42)
     if magnitude_images:

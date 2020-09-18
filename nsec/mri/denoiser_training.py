@@ -68,7 +68,7 @@ def train_denoiser_score_matching(
         additional_info += "_padcrop"
     if magnitude_images:
         additional_info += "_mag"
-    if sn_val != 2.
+    if sn_val != 2.:
         additional_info += f'_sn{sn_val}'
     for step, batch in tqdm(enumerate(mri_images_iterator), total=n_steps, desc='Steps'):
         loss, params, state, sn_state, opt_state = update(params, state, sn_state, next(rng_seq), opt_state, batch)

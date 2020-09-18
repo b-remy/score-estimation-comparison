@@ -214,7 +214,7 @@ class UResNet(hk.Module):
       self.final_batchnorm = hk.BatchNorm(name="final_batchnorm", **bn_config)
 
     self.final_upconv = hk.Conv2DTranspose(output_channels=1,
-                                kernel_shape=32,
+                                kernel_shape=5,
                                 stride=2,
                                 padding="SAME",
                                 name="final_upconv")
@@ -247,6 +247,27 @@ class UResNet(hk.Module):
     return self.final_conv(out)/(jnp.abs(condition)*jnp.ones_like(inputs)+1e-3)
 
 class SmallUResNet(UResNet):
+  """ResNet18."""
+
+  def __init__(self,
+               bn_config: Optional[Mapping[str, float]] = None,
+               name: Optional[str] = None):
+    """Constructs a ResNet model.
+    Args:
+      bn_config: A dictionary of two elements, ``decay_rate`` and ``eps`` to be
+        passed on to the :class:`~haiku.BatchNorm` layers.
+      resnet_v2: Whether to use the v1 or v2 ResNet implementation. Defaults
+        to ``False``.
+      name: Name of the module.
+    """
+    super().__init__(blocks_per_group=(2, 2, 2, 2),
+                     bn_config=bn_config,
+                     bottleneck=False,
+                     channels_per_group=(32, 64, 128, 128),
+                     use_projection=(True, True, True, True),
+                     name=name)
+
+class MediumUResNet(UResNet):
   """ResNet18."""
 
   def __init__(self,

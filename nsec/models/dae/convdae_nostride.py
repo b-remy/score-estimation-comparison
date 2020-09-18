@@ -44,9 +44,12 @@ class BlockV1NoStride(hk.Module):
       maybe_transposed_conv = hk.Conv2D
 
     if self.use_projection:
+      # this is just used for the skip connection
       self.proj_conv = maybe_transposed_conv(
           output_channels=channels,
           kernel_shape=1,
+          # depending on whether it's transpose or not this stride must be
+          # replaced by upsampling or avg pooling
           stride=stride,
           with_bias=not self.use_bn,
           padding="SAME",

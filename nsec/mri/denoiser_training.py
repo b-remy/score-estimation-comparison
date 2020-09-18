@@ -23,6 +23,7 @@ def train_denoiser_score_matching(
         contrast=None,
         magnitude_images=False,
         pad_crop=True,
+        sn_val=2.,
     ):
     ds_kwargs = dict(
         dataset='train',
@@ -55,6 +56,7 @@ def train_denoiser_score_matching(
         lr=lr,
         pad_crop=pad_crop,
         magnitude_images=magnitude_images,
+        sn_val=sn_val,
     )
 
     losses = []
@@ -87,6 +89,7 @@ def train_denoiser_score_matching(
 @click.option('n_steps', '-n', type=int, default=int(1e3))
 @click.option('noise_power_spec', '-nps', type=float, default=30)
 @click.option('lr', '-lr', type=float, default=1e-3)
+@click.option('sn_val', '-sn', type=float, default=2.)
 @click.option('contrast', '-c', type=str, default=None)
 @click.option('magnitude_images', '-m', is_flag=True)
 @click.option('pad_crop', '-pc', is_flag=True)
@@ -98,6 +101,7 @@ def train_denoiser_score_matching_click(
         contrast,
         magnitude_images,
         pad_crop,
+        sn_val,
     ):
     train_denoiser_score_matching(
         batch_size=batch_size,
@@ -107,6 +111,7 @@ def train_denoiser_score_matching_click(
         contrast=contrast,
         magnitude_images=magnitude_images,
         pad_crop=pad_crop,
+        sn_val=sn_val,
     )
 
 

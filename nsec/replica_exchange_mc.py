@@ -589,8 +589,8 @@ class ReplicaExchangeMC(kernel_base.TransitionKernel):
 
       # Here we compute the acceptance ratio for transition
       # First, at a given temperature
-      v = mcmc_util.index_remapping_gather(pre_swap_replica_states,
-                              swaps, name='gather_swap_steps')[0] - pre_swap_replica_states[0]
+      v = mcmc_util.index_remapping_gather(pre_swap_replica_states[0],
+                              swaps, name='gather_swap_steps') - pre_swap_replica_states[0]
       cs = pre_swap_replica_states[0]
       @jax.vmap
       def integrand(t):
@@ -599,15 +599,15 @@ class ReplicaExchangeMC(kernel_base.TransitionKernel):
 
       # Now we compute the reverse
       v = -v
-      cs = mcmc_util.index_remapping_gather(pre_swap_replica_states,
-                              swaps, name='gather_swap_steps')[0]
+      cs = mcmc_util.index_remapping_gather(pre_swap_replica_states[0],
+                              swaps, name='gather_swap_steps')
       @jax.vmap
       def integrand(t):
         return jnp.sum(self._parameters['target_score_fn']( t * v + cs, swapped_inverse_temperatures)*v, axis=-1)
       delta_logp2 = simps(integrand, 0.,1., self._parameters['num_delta_logp_steps'])
 
       # If i and j are swapping, log_accept_ratio[] i and j are equal.
-      log_accept_ratio = delta_logp1 + delta_logp2
+      log_accept_ratio = (delta_logp1 + delta_logp2)
 
       log_accept_ratio = tf.where(
           tf.math.is_finite(log_accept_ratio),
@@ -659,7 +659,7 @@ class ReplicaExchangeMC(kernel_base.TransitionKernel):
           swapped_inverse_temperatures,
           is_swap_accepted_mask,
           _swap_tensor,
-          post_swap_replica_states, partial(self.target_log_prob_fn, sigma=inverse_temperatures))
+          post_swap_replica_states, target_log_prob_for_inner_kernel)
 
       if mcmc_util.is_list_like(current_state):
         # We *always* canonicalize the states in the kernel results.
@@ -858,26 +858,6 @@ def _make_post_swap_replica_results(pre_swap_replica_results,
       proposed_state=tf.convert_to_tensor(np.nan, dtype=dtype),
   )
 
-  replica_and_batch_rank = prefer_static.rank(kr.log_accept_ratio)
-
-  # After using swap_tensor_fn on "values", values will be multiplied by the
-  # swapped_inverse_temperatures.  We need it to be multiplied instead by the
-  # inverse temperature corresponding to its index.
-  it_ratio_raw = jnp.ones_like(inverse_temperatures)
-  it_ratio = tf.where(
-      is_swap_accepted_mask,
-      mcmc_util.left_justified_expand_dims_to(it_ratio_raw,
-                                              replica_and_batch_rank),
-      tf.convert_to_tensor(1.0, dtype=dtype))
-
-  def _swap_then_retemper(x):
-    x, is_multipart = mcmc_util.prepare_state_parts(x)
-    it_ratio_ = mcmc_util.left_justified_expand_dims_like(it_ratio, x[0])
-    x = [x_part * it_ratio_ for x_part in x]
-    if not is_multipart:
-      x = x[0]
-    return x
-
   if target_log_prob_fn is None:
     return kr
   else:
@@ -894,22 +874,18 @@ def _make_post_swap_replica_results(pre_swap_replica_results,
                   hmc.UncalibratedHamiltonianMonteCarloKernelResults):
       kr = kr._replace(
           accepted_results=kr.accepted_results._replace(
-              target_log_prob=_swap_then_retemper(
-                  swapped_target_log_prob),
-              grads_target_log_prob=_swap_then_retemper(
-                  swapped_grads_target_log_prob)))
+              target_log_prob=swapped_target_log_prob,
+              grads_target_log_prob=swapped_grads_target_log_prob))
     elif isinstance(kr.accepted_results,
                     random_walk_metropolis.UncalibratedRandomWalkResults):
       kr = kr._replace(
           accepted_results=kr.accepted_results._replace(
-              target_log_prob=_swap_then_retemper(
-                  swapped_target_log_prob)))
+              target_log_prob=swapped_target_log_prob))
     else:
       # TODO(b/143702650) Handle other kernels.
       raise NotImplementedError(
           'Only HMC and RWMH Kernels are handled at this time. Please file a '
           'request with the TensorFlow Probability team.')
-
     return kr
 
 

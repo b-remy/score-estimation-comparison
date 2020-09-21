@@ -225,11 +225,13 @@ class UResNet(hk.Module):
     # Number of blocks in each group for ResNet.
     check_length(4, blocks_per_group, "blocks_per_group")
     check_length(4, channels_per_group, "channels_per_group")
+    self.upsampling = upsample
+    self.pooling = hk.AvgPool(window_shape=2, strides=2, padding='SAME')
 
     self.initial_conv = hk.Conv2D(
         output_channels=32,
         kernel_shape=7,
-        stride=2,
+        stride=1,
         with_bias=not self.use_bn,
         padding="SAME",
         name="initial_conv")
@@ -270,7 +272,7 @@ class UResNet(hk.Module):
 
     self.final_up_conv = hk.Conv2DTranspose(output_channels=channels_per_group[0]*self.n_output_channels//2,
                                 kernel_shape=5,
-                                stride=2,
+                                stride=1,
                                 padding="SAME",
                                 name="final_up_conv")
     self.antepenultian_conv = hk.Conv2D(
@@ -295,7 +297,7 @@ class UResNet(hk.Module):
     if self.pad_crop:
         out, padding = pad_for_pool(inputs, 4)
     out = self.initial_conv(out)
-
+    out = self.pooling(out)
     # Decreasing resolution
     levels = []
     for block_group in self.block_groups:
@@ -310,6 +312,7 @@ class UResNet(hk.Module):
       out = jnp.concatenate([out, levels[-i-1]],axis=-1)
 
     # Second to last upsampling, merging with input branch
+    out = self.upsampling(out)
     out = self.final_up_conv(out)
     out = self.antepenultian_conv(out)
     out = jax.nn.relu(out)

@@ -50,7 +50,10 @@ class TemperedMCKernelResults(
             'post_tempering_inverse_temperatures',
 
             # Acceptance ratio for lowering temperature
-            'tempering_log_accept_ratio'
+            'tempering_log_accept_ratio',
+
+            # Counts how many steps have been done at this temperature
+            'steps_at_temperature',
 
             # Random seed for this step.
             'seed',
@@ -71,6 +74,7 @@ class TemperedMC(kernel_base.TransitionKernel):
                inverse_temperatures,
                make_kernel_fn,
                gamma,
+               min_steps_per_temp,
                num_delta_logp_steps=4,
                seed=None,
                validate_args=False,
@@ -135,6 +139,10 @@ class TemperedMC(kernel_base.TransitionKernel):
     return self._parameters['inverse_temperatures']
 
   @property
+  def min_steps_per_temp(self):
+    return self._parameters['min_steps_per_temp']
+
+  @property
   def make_kernel_fn(self):
     return self._parameters['make_kernel_fn']
 
@@ -188,6 +196,11 @@ class TemperedMC(kernel_base.TransitionKernel):
           previous_kernel_results.post_tempering_inverse_temperatures,
           name='inverse_temperatures')
 
+      steps_at_temperature = tf.convert_to_tensor(
+          previous_kernel_results.steps_at_temperature,
+          name='number of steps')
+
+
       target_score_for_inner_kernel = partial(self.target_score_fn,
                                               sigma=inverse_temperatures)
       target_log_prob_for_inner_kernel = partial(self.target_log_prob_fn,
@@ -218,22 +231,30 @@ class TemperedMC(kernel_base.TransitionKernel):
           warnings.warn(mcmc_util.SEED_CTOR_ARG_DEPRECATION_MSG)
         inner_kwargs = {}
         swap_seed, logu_seed = samplers.split_seed(self._seed_stream())
+
+      if mcmc_util.is_list_like(current_state):
+        # We *always* canonicalize the states in the kernel results.
+        states = current_state
+      else:
+        states = [current_state]
+      print(states)
       [
           new_state,
           pre_tempering_results,
       ] = inner_kernel.one_step(
-          current_state,
+          states,
           previous_kernel_results.post_tempering_results,
           **inner_kwargs)
 
       # Now that we have run one step, we consider maybe lowering the temperature
       # Proposed new temperature
       proposed_inverse_temperatures = self.gamma * inverse_temperatures
+      dtype = inverse_temperatures.dtype
 
       # We will lower the temperature if this new proposed step is compatible with
       # a temperature swap
-      v = new_state - current_state
-      cs = current_state
+      v = new_state[0] - states[0]
+      cs = states[0]
       @jax.vmap
       def integrand(t):
         return jnp.sum(self._parameters['target_score_fn']( t * v + cs, inverse_temperatures)*v, axis=-1)
@@ -241,10 +262,10 @@ class TemperedMC(kernel_base.TransitionKernel):
 
       # Now we compute the reverse
       v = -v
-      cs = new_state
+      cs = states[0]
       @jax.vmap
       def integrand(t):
-        return jnp.sum(self._parameters['target_score_fn']( t * v + cs, swapped_inverse_temperatures)*v, axis=-1)
+        return jnp.sum(self._parameters['target_score_fn']( t * v + cs, proposed_inverse_temperatures)*v, axis=-1)
       delta_logp2 = simps(integrand, 0.,1., self._parameters['num_delta_logp_steps'])
 
       log_accept_ratio = (delta_logp1 + delta_logp2)
@@ -255,7 +276,7 @@ class TemperedMC(kernel_base.TransitionKernel):
 
       # Produce Log[Uniform] draws that are identical at swapped indices.
       log_uniform = tf.math.log(
-          samplers.uniform(shape=replica_and_batch_shape,
+          samplers.uniform(shape=log_accept_ratio.shape,
                            dtype=dtype,
                            seed=logu_seed))
 
@@ -264,10 +285,27 @@ class TemperedMC(kernel_base.TransitionKernel):
           log_accept_ratio,
           name='is_tempering_accepted_mask')
 
+      is_min_steps_satisfied = tf.greater(
+          steps_at_temperature,
+          self.min_steps_per_temp*tf.ones_like(steps_at_temperature),
+          name='is_min_steps_satisfied'
+      )
+
+      # Only propose tempering if the chain was going to accept this point anyway
+      is_tempering_accepted_mask = tf.math.logical_and(is_tempering_accepted_mask,
+                                                       pre_tempering_results.is_accepted)
+
+      is_tempering_accepted_mask = tf.math.logical_and(is_tempering_accepted_mask,
+                                                        is_min_steps_satisfied)
+
       # Updating accepted inverse temperatures
       post_tempering_inverse_temperatures = mcmc_util.choose(
             is_tempering_accepted_mask,
             proposed_inverse_temperatures, inverse_temperatures)
+
+      steps_at_temperature = mcmc_util.choose(
+            is_tempering_accepted_mask,
+            tf.zeros_like(steps_at_temperature), steps_at_temperature+1)
 
       # Invalidating and recomputing results
       [
@@ -306,10 +344,11 @@ class TemperedMC(kernel_base.TransitionKernel):
           pre_tempering_inverse_temperatures=inverse_temperatures,
           post_tempering_inverse_temperatures=post_tempering_inverse_temperatures,
           tempering_log_accept_ratio=log_accept_ratio,
+          steps_at_temperature=steps_at_temperature,
           seed=samplers.zeros_seed() if seed is None else seed,
       )
 
-      return states, new_kernel_results
+      return new_state[0], new_kernel_results
 
 
   def bootstrap_results(self, init_state):
@@ -362,14 +401,48 @@ class TemperedMC(kernel_base.TransitionKernel):
             target_score_for_inner_kernel, self._seed_stream())
 
       inner_results = inner_kernel.bootstrap_results(init_state)
+      post_tempering_results = inner_results
+
+      # Invalidating and recomputing results
+      [
+        new_target_log_prob,
+        new_grads_target_log_prob,
+      ] = mcmc_util.maybe_call_fn_and_grads(partial(self.target_log_prob_fn,
+                                                    sigma=inverse_temperatures),
+                                            init_state)
+
+      # Updating inner kernel results
+      dtype = inverse_temperatures.dtype
+      post_tempering_results = post_tempering_results._replace(
+          proposed_results=tf.convert_to_tensor(np.nan, dtype=dtype),
+          proposed_state=tf.convert_to_tensor(np.nan, dtype=dtype),
+      )
+
+      if isinstance(post_tempering_results.accepted_results,
+                    hmc.UncalibratedHamiltonianMonteCarloKernelResults):
+        post_tempering_results = post_tempering_results._replace(
+            accepted_results=post_tempering_results.accepted_results._replace(
+                target_log_prob=new_target_log_prob,
+                grads_target_log_prob=new_grads_target_log_prob))
+      elif isinstance(post_tempering_results.accepted_results,
+                      random_walk_metropolis.UncalibratedRandomWalkResults):
+        post_tempering_results = post_tempering_results._replace(
+            accepted_results=post_tempering_results.accepted_results._replace(
+                target_log_prob=new_target_log_prob))
+      else:
+        # TODO(b/143702650) Handle other kernels.
+        raise NotImplementedError(
+            'Only HMC and RWMH Kernels are handled at this time. Please file a '
+            'request with the TensorFlow Probability team.')
 
       return TemperedMCKernelResults(
           pre_tempering_results=inner_results,
-          post_tempering_results=inner_results,
+          post_tempering_results=post_tempering_results,
           pre_tempering_inverse_temperatures=inverse_temperatures,
           post_tempering_inverse_temperatures=inverse_temperatures,
           tempering_log_accept_ratio=tf.zeros_like(inverse_temperatures),
-          seed=samplers.zeros_seed() if seed is None else seed,
+          steps_at_temperature=tf.zeros_like(inverse_temperatures, dtype=tf.int32),
+          seed=samplers.zeros_seed(),
       )
 
 def simps(f, a, b, N=128):

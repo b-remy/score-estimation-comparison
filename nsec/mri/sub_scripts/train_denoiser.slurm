@@ -8,8 +8,8 @@
 # de Slurm "multithread" fait bien référence à l'hyperthreading.
 #SBATCH --hint=nomultithread         # on réserve des coeurs physiques et non logiques
 #SBATCH --distribution=block:block   # on épingle les tâches sur des coeurs contigus
-#SBATCH --time=20:00:00              # temps d’exécution maximum demande (HH:MM:SS)
-#SBATCH --qos=qos_gpu-t3
+#SBATCH --time=100:00:00              # temps d’exécution maximum demande (HH:MM:SS)
+#SBATCH --qos=qos_gpu-t4
 #SBATCH --output=denoiser_score_est_train%A_%a.out # nom du fichier de sortie
 #SBATCH --error=denoiser_score_est_train%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
 #SBATCH --array=0-2
@@ -25,8 +25,8 @@ module load tensorflow-gpu/py3/2.3.0
 export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/
 
-opt[0]="-m"
-opt[2]=""
-opt[1]="-pc"
+opt[0]="-lr 0.0001"
+opt[2]="-nps 50"
+opt[1]="-nps 100"
 
-srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]} -n 7000 -c CORPD_FBK
+srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]} -n 50000 -c CORPD_FBK -pc

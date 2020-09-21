@@ -209,7 +209,7 @@ class TemperedMC(kernel_base.TransitionKernel):
       try:
         inner_kernel = self.make_kernel_fn(  # pylint: disable=not-callable
             target_log_prob_for_inner_kernel,
-            target_score_for_inner_kernel)
+            target_score_for_inner_kernel, inverse_temperatures)
       except TypeError as e:
         if 'argument' not in str(e):
           raise
@@ -219,7 +219,7 @@ class TemperedMC(kernel_base.TransitionKernel):
             '`one_step`.')
         inner_kernel = self.make_kernel_fn(  # pylint: disable=not-callable
             target_log_prob_for_inner_kernel,
-            target_score_for_inner_kernel, self._seed_stream())
+            target_score_for_inner_kernel, inverse_temperatures, self._seed_stream())
 
       if seed is not None:
         seed = samplers.sanitize_seed(seed)
@@ -387,7 +387,7 @@ class TemperedMC(kernel_base.TransitionKernel):
       try:
         inner_kernel = self.make_kernel_fn(  # pylint: disable=not-callable
             target_log_prob_for_inner_kernel,
-            target_score_for_inner_kernel)
+            target_score_for_inner_kernel, inverse_temperatures)
       except TypeError as e:
         if 'argument' not in str(e):
           raise
@@ -398,7 +398,7 @@ class TemperedMC(kernel_base.TransitionKernel):
             'fallback may become an error 2020-09-20.')
         inner_kernel = self.make_kernel_fn(  # pylint: disable=not-callable
             target_log_prob_for_inner_kernel,
-            target_score_for_inner_kernel, self._seed_stream())
+            target_score_for_inner_kernel, inverse_temperatures, self._seed_stream())
 
       inner_results = inner_kernel.bootstrap_results(init_state)
       post_tempering_results = inner_results

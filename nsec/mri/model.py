@@ -7,7 +7,7 @@ from jax.experimental import optix
 import jax.numpy as jnp
 
 from nsec.models.dae.convdae import SmallUResNet
-from nsec.models.dae.convdae_notstride import SmallUResNet as SmallUResNetNoStride
+from nsec.models.dae.convdae_nostride import SmallUResNet as SmallUResNetNoStride
 from nsec.normalization import SNParamsTree as CustomSNParamsTree
 
 

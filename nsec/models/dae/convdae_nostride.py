@@ -39,18 +39,19 @@ class BlockV1NoStride(hk.Module):
         bn_config.setdefault("decay_rate", 0.999)
 
     if transpose:
-      maybe_transposed_conv = hk.Conv2DTranspose
+      self.pooling_or_upsampling = upsample
     else:
-      maybe_transposed_conv = hk.Conv2D
+      self.pooling_or_upsampling = hk.AvgPool(window_shape=2, strides=2, padding='SAME')
+    self.stride = stride
 
     if self.use_projection:
       # this is just used for the skip connection
-      self.proj_conv = maybe_transposed_conv(
+      self.proj_conv = hk.Conv2D(
           output_channels=channels,
           kernel_shape=1,
           # depending on whether it's transpose or not this stride must be
           # replaced by upsampling or avg pooling
-          stride=stride,
+          stride=1,
           with_bias=not self.use_bn,
           padding="SAME",
           name="shortcut_conv")
@@ -68,10 +69,10 @@ class BlockV1NoStride(hk.Module):
     if self.use_bn:
         bn_0 = hk.BatchNorm(name="batchnorm_0", **bn_config)
 
-    conv_1 = maybe_transposed_conv(
+    conv_1 = hk.Conv2D(
         output_channels=channels // channel_div,
         kernel_shape=3,
-        stride=stride,
+        stride=1,
         with_bias=not self.use_bn,
         padding="SAME",
         name="conv_1")
@@ -101,10 +102,14 @@ class BlockV1NoStride(hk.Module):
     out = shortcut = inputs
 
     if self.use_projection:
+      if self.stride > 1:
+          shortcut = self.pooling_or_upsampling(shortcut)
       shortcut = self.proj_conv(shortcut)
       if self.use_bn:
           shortcut = self.proj_batchnorm(shortcut, is_training, test_local_stats)
 
+    if self.stride > 1:
+        out = self.pooling_or_upsampling(out)
     for i, (conv_i, bn_i) in enumerate(self.layers):
       out = conv_i(out)
       if self.use_bn:
@@ -131,7 +136,7 @@ class BlockGroup(hk.Module):
   ):
     super().__init__(name=name)
 
-    block_cls = BlockV1
+    block_cls = BlockV1NoStride
 
     self.blocks = []
     for i in range(num_blocks):

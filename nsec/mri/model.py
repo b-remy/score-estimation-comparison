@@ -7,16 +7,21 @@ from jax.experimental import optix
 import jax.numpy as jnp
 
 from nsec.models.dae.convdae import SmallUResNet
+from nsec.models.dae.convdae_notstride import SmallUResNet as SmallUResNetNoStride
 from nsec.normalization import SNParamsTree as CustomSNParamsTree
 
 
-def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2.):
+def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2., stride=True):
     def forward(x, s, is_training=False):
         if magnitude_images:
             n_out = 1
         else:
             n_out = 2
-        denoiser = SmallUResNet(use_bn=True, n_output_channels=n_out, pad_crop=pad_crop)
+        if stride:
+            denoiser_cls = SmallUResNet
+        else:
+            denoiser_cls = SmallUResNetNoStride
+        denoiser = denoiser_cls(use_bn=True, n_output_channels=n_out, pad_crop=pad_crop)
         if not magnitude_images:
             x = jnp.concatenate([x.real, x.imag], axis=-1)
         denoised_float = denoiser(x, s, is_training=is_training)

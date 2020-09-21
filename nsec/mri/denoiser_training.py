@@ -24,6 +24,7 @@ def train_denoiser_score_matching(
         magnitude_images=False,
         pad_crop=True,
         sn_val=2.,
+        stride=True,
     ):
     ds_kwargs = dict(
         dataset='train',
@@ -57,6 +58,7 @@ def train_denoiser_score_matching(
         pad_crop=pad_crop,
         magnitude_images=magnitude_images,
         sn_val=sn_val,
+        stride=stride,
     )
 
     losses = []
@@ -72,6 +74,8 @@ def train_denoiser_score_matching(
         additional_info += f'_sn{sn_val}'
     if lr != 1e-3:
         additional_info += f'_lr{lr}'
+    if not stride:
+        additional_info += '_no_stride'
     for step, batch in tqdm(enumerate(mri_images_iterator), total=n_steps, desc='Steps'):
         loss, params, state, sn_state, opt_state = update(params, state, sn_state, next(rng_seq), opt_state, batch)
         losses.append(loss)
@@ -97,6 +101,7 @@ def train_denoiser_score_matching(
 @click.option('contrast', '-c', type=str, default=None)
 @click.option('magnitude_images', '-m', is_flag=True)
 @click.option('pad_crop', '-pc', is_flag=True)
+@click.option('stride', '-st', is_flag=True)
 def train_denoiser_score_matching_click(
         batch_size,
         n_steps,
@@ -106,6 +111,7 @@ def train_denoiser_score_matching_click(
         magnitude_images,
         pad_crop,
         sn_val,
+        stride,
     ):
     train_denoiser_score_matching(
         batch_size=batch_size,
@@ -116,6 +122,7 @@ def train_denoiser_score_matching_click(
         magnitude_images=magnitude_images,
         pad_crop=pad_crop,
         sn_val=sn_val,
+        stride=stride,
     )
 
 

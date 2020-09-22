@@ -255,6 +255,7 @@ class TemperedMC(kernel_base.TransitionKernel):
       # a temperature swap
       v = new_state[0] - states[0]
       cs = states[0]
+      
       @jax.vmap
       def integrand(t):
         return jnp.sum(self._parameters['target_score_fn']( t * v + cs, inverse_temperatures)*v, axis=-1)
@@ -262,7 +263,7 @@ class TemperedMC(kernel_base.TransitionKernel):
 
       # Now we compute the reverse
       v = -v
-      cs = states[0]
+      cs = new_state[0]
       @jax.vmap
       def integrand(t):
         return jnp.sum(self._parameters['target_score_fn']( t * v + cs, proposed_inverse_temperatures)*v, axis=-1)

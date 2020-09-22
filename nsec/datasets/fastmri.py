@@ -99,7 +99,7 @@ def mri_noisy_generator(
         if not magnitude:
             noise_shape[-1] = 2
         normal_noise = np.random.normal(
-            size=batch.shape,
+            size=noise_shape,
             loc=0.0,
             scale=1.0,
         )

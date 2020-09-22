@@ -13,6 +13,10 @@ fastmri_path = Path(os.environ['FASTMRI_DATA_DIR'])
 train_path = fastmri_path / 'singlecoil_train' / 'singlecoil_train'
 val_path = fastmri_path / 'singlecoil_val'
 
+def ifft(kspace):
+    image = np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(kspace, axes=(-2, -1))), axes=(-2, -1))
+    return image
+
 def load_image(file, image_size=320):
     with h5py.File(file, 'r') as h5_obj:
         im_h5 = h5_obj['reconstruction_esc']
@@ -20,6 +24,18 @@ def load_image(file, image_size=320):
         n_slices = im_shape[0]
         i_slice = random.randint(0, n_slices - 1)
         image = im_h5[i_slice]
+    if image_size != 320:
+        image = resize(image, (image_size, image_size))
+    return image
+
+def load_image_complex(file, image_size=320):
+    with h5py.File(file, 'r') as h5_obj:
+        kspace_h5 = h5_obj['kspace']
+        kspace_shape = kspace_h5.shape
+        n_slices = kspace_shape[0]
+        i_slice = random.randint(0, n_slices - 1)
+        kspace = kspace_h5[i_slice]
+    image = ifft(kspace)
     if image_size != 320:
         image = resize(image, (image_size, image_size))
     return image
@@ -37,13 +53,14 @@ def draw_gaussian_noise_power(batch_size, noise_power_spec):
     )
     return noise_power
 
-def mri_noisy_mag_generator(
+def mri_noisy_generator(
         split='train',
         batch_size=32,
         noise_power_spec=30,
         scale_factor=1e6,
         image_size=320,
         contrast=None,
+        magnitude=True,
     ):
     i = 0
     if split == 'train':
@@ -58,8 +75,12 @@ def mri_noisy_mag_generator(
     while True:
         relative_i = i % n_batches
         next_batch_files = data_files[relative_i*batch_size: (relative_i+1)*batch_size]
+        if magnitude:
+            load_fun = load_image
+        else:
+            load_fun = load_image_complex
         batch = np.array(Parallel(n_jobs=batch_size)(
-            delayed(partial(load_image, image_size=image_size))(file)
+            delayed(partial(load_fun, image_size=image_size))(file)
             for file in next_batch_files
         ))
         batch = batch[..., None]

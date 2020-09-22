@@ -24,6 +24,11 @@ def load_image(file, image_size=320):
         image = resize(image, (image_size, image_size))
     return image
 
+def load_contrast(file):
+    with h5py.File(file, 'r') as h5_obj:
+        contrast = h5_obj.attrs['acquisition']
+    return contrast
+
 def draw_gaussian_noise_power(batch_size, noise_power_spec):
     noise_power = np.random.normal(
         size=(batch_size,),
@@ -38,6 +43,7 @@ def mri_noisy_mag_generator(
         noise_power_spec=30,
         scale_factor=1e6,
         image_size=320,
+        contrast=None,
     ):
     i = 0
     if split == 'train':
@@ -45,6 +51,8 @@ def mri_noisy_mag_generator(
     elif split == 'val':
         data_path = val_path
     data_files = list(data_path.glob('*.h5'))
+    if contrast is not None:
+        data_files = [f for f in data_files if load_contrast(f) == contrast]
     n_files = len(data_files)
     n_batches = n_files // batch_size
     while True:

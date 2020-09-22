@@ -17,6 +17,14 @@ def ifft(kspace):
     image = np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(kspace, axes=(-2, -1))), axes=(-2, -1))
     return image
 
+def crop_center(img, cropx=320, cropy=None):
+    y, x = img.shape
+    if cropy is None:
+        cropy = cropx
+    startx = x//2-(cropx//2)
+    starty = y//2-(cropy//2)
+    return img[starty:starty+cropy,startx:startx+cropx]
+
 def load_image(file, image_size=320):
     with h5py.File(file, 'r') as h5_obj:
         im_h5 = h5_obj['reconstruction_esc']
@@ -24,6 +32,7 @@ def load_image(file, image_size=320):
         n_slices = im_shape[0]
         i_slice = random.randint(0, n_slices - 1)
         image = im_h5[i_slice]
+    image = crop_center(image)
     if image_size != 320:
         image = resize(image, (image_size, image_size))
     return image
@@ -86,6 +95,9 @@ def mri_noisy_generator(
         batch = batch[..., None]
         batch = scale_factor * batch
         noise_power = draw_gaussian_noise_power(batch_size=batch_size, noise_power_spec=noise_power_spec)
+        noise_shape = list(batch.shape)
+        if not magnitude:
+            noise_shape[-1] = 2
         normal_noise = np.random.normal(
             size=batch.shape,
             loc=0.0,
@@ -93,6 +105,9 @@ def mri_noisy_generator(
         )
         noise_power_bdcast = noise_power[:, None, None, None]
         noise = normal_noise * noise_power_bdcast
+        if not magnitude:
+            noise = noise[..., 0] + 1j * noise[..., 1]
+            noise = noise[..., None]
         image_noisy = batch + noise
         model_inputs = (image_noisy, noise_power)
         model_outputs = noise

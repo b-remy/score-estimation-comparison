@@ -10,7 +10,7 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 import tensorflow_probability as tfp; tfp = tfp.experimental.substrates.jax
 from tqdm import tqdm
 
-from nsec.datasets.fastmri import mri_noisy_mag_generator
+from nsec.datasets.fastmri import mri_noisy_generator
 from nsec.mri.model import get_model
 
 
@@ -26,20 +26,13 @@ def train_denoiser_score_matching(
         stride=True,
         image_size=320,
     ):
-    ds_kwargs = dict(
+    train_mri_gen = mri_noisy_generator(
         split='train',
         scale_factor=1e6,
         noise_power_spec=noise_power_spec,
         batch_size=batch_size,
-        # contrast=contrast,
-    )
-    if magnitude_images:
-        ds_fun = mri_noisy_mag_generator
-        ds_kwargs.update(image_size=image_size)
-    else:
-        raise NotImplementedError()
-    train_mri_gen = ds_fun(
-        **ds_kwargs
+        contrast=contrast,
+        magnitude=magnitude_images,
     )
     ##### BATCH DEFINITION
     # (image_noisy, noise_power), noise_realisation

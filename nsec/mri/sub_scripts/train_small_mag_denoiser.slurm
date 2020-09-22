@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=denoiser_score_est_train     # nom du job
+#SBATCH --job-name=denoiser_score_est_train_small_mag     # nom du job
 #SBATCH --ntasks=1                   # nombre de tâche MPI
 #SBATCH --ntasks-per-node=1          # nombre de tâche MPI par noeud
 #SBATCH --gres=gpu:1                 # nombre de GPU à réserver par nœud
@@ -10,8 +10,8 @@
 #SBATCH --distribution=block:block   # on épingle les tâches sur des coeurs contigus
 #SBATCH --time=20:00:00              # temps d’exécution maximum demande (HH:MM:SS)
 #SBATCH --qos=qos_gpu-t3
-#SBATCH --output=denoiser_score_est_train%A_%a.out # nom du fichier de sortie
-#SBATCH --error=denoiser_score_est_train%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
+#SBATCH --output=denoiser_score_est_train_small_mag%A_%a.out # nom du fichier de sortie
+#SBATCH --error=denoiser_score_est_train_small_mag%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
 #SBATCH --array=0-2
 
 set -x

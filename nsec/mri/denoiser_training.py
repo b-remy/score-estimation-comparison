@@ -33,6 +33,7 @@ def train_denoiser_score_matching(
         batch_size=batch_size,
         contrast=contrast,
         magnitude=magnitude_images,
+        image_size=image_size,
     )
     ##### BATCH DEFINITION
     # (image_noisy, noise_power), noise_realisation

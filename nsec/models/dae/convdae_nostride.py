@@ -270,11 +270,13 @@ class UResNet(hk.Module):
     if self.resnet_v2 and self.use_bn:
       self.final_batchnorm = hk.BatchNorm(name="final_batchnorm", **bn_config)
 
-    self.final_up_conv = hk.Conv2DTranspose(output_channels=channels_per_group[0]*self.n_output_channels//2,
-                                kernel_shape=5,
-                                stride=1,
-                                padding="SAME",
-                                name="final_up_conv")
+    self.final_up_conv = hk.Conv2D(
+        output_channels=channels_per_group[0]*self.n_output_channels//2,
+        kernel_shape=5,
+        stride=1,
+        padding="SAME",
+        name="final_up_conv",
+    )
     self.antepenultian_conv = hk.Conv2D(
         output_channels=channels_per_group[0]*self.n_output_channels//2,
         kernel_shape=3,

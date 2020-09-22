@@ -10,9 +10,8 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 import tensorflow_probability as tfp; tfp = tfp.experimental.substrates.jax
 from tqdm import tqdm
 
+from nsec.datasets.fastmri import mri_noisy_mag_generator
 from nsec.mri.model import get_model
-os.environ['SINGLECOIL_TRAIN_DIR'] = 'singlecoil_train/singlecoil_train/'
-from tf_fastmri_data.datasets.noisy import ComplexNoisyFastMRIDatasetBuilder, NoisyFastMRIDatasetBuilder
 
 
 def train_denoiser_score_matching(
@@ -28,29 +27,20 @@ def train_denoiser_score_matching(
         image_size=320,
     ):
     ds_kwargs = dict(
-        dataset='train',
-        brain=False,
+        split='train',
         scale_factor=1e6,
         noise_power_spec=noise_power_spec,
-        noise_input=True,
-        noise_mode='gaussian',
-        residual_learning=True,
         batch_size=batch_size,
-        slice_random=True,
-        contrast=contrast,
+        # contrast=contrast,
     )
     if magnitude_images:
-        ds_class = NoisyFastMRIDatasetBuilder
+        ds_fun = mri_noisy_mag_generator
         ds_kwargs.update(image_size=image_size)
     else:
-        ds_class = ComplexNoisyFastMRIDatasetBuilder
-        ds_kwargs.update(
-            kspace_size=(320, 320),
-        )
-    train_mri_ds = ds_class(
+        raise NotImplementedError()
+    train_mri_gen = ds_fun(
         **ds_kwargs
     )
-    mri_images_iterator = train_mri_ds.preprocessed_ds.take(n_steps).as_numpy_iterator()
     ##### BATCH DEFINITION
     # (image_noisy, noise_power), noise_realisation
     # here the noise_realisation is the full one, not the epsilon from the standard normal law
@@ -78,7 +68,7 @@ def train_denoiser_score_matching(
         additional_info += f'_lr{lr}'
     if not stride:
         additional_info += '_no_stride'
-    for step, batch in tqdm(enumerate(mri_images_iterator), total=n_steps, desc='Steps'):
+    for step, batch in tqdm(enumerate(train_mri_gen), total=n_steps, desc='Steps'):
         loss, params, state, sn_state, opt_state = update(params, state, sn_state, next(rng_seq), opt_state, batch)
         losses.append(loss)
         if step%100==0:
@@ -86,6 +76,8 @@ def train_denoiser_score_matching(
         if (step+1)%1000==0:
             with open(str(Path(os.environ['CHECKPOINTS_DIR']) / f'conv-dae-L2-mri-{noise_power_spec}{additional_info}.pckl'), 'wb') as file:
                 pickle.dump([params, state, sn_state], file)
+        if step > n_steps:
+            break
     if False:
         plt.figure()
         plt.loglog(losses[10:])

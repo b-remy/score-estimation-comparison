@@ -38,10 +38,10 @@ def train_denoiser_score_matching(
         batch_size=batch_size,
         slice_random=True,
         contrast=contrast,
-        image_size=image_size,
     )
     if magnitude_images:
         ds_class = NoisyFastMRIDatasetBuilder
+        ds_kwargs.update(image_size=image_size)
     else:
         ds_class = ComplexNoisyFastMRIDatasetBuilder
         ds_kwargs.update(

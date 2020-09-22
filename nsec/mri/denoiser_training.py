@@ -25,6 +25,7 @@ def train_denoiser_score_matching(
         pad_crop=True,
         sn_val=2.,
         stride=True,
+        image_size=320,
     ):
     ds_kwargs = dict(
         dataset='train',
@@ -37,6 +38,7 @@ def train_denoiser_score_matching(
         batch_size=batch_size,
         slice_random=True,
         contrast=contrast,
+        image_size=image_size,
     )
     if magnitude_images:
         ds_class = NoisyFastMRIDatasetBuilder
@@ -102,6 +104,7 @@ def train_denoiser_score_matching(
 @click.option('magnitude_images', '-m', is_flag=True)
 @click.option('pad_crop', '-pc', is_flag=True)
 @click.option('stride', '-st', is_flag=True)
+@click.option('image_size', '-is', type=int, default=320)
 def train_denoiser_score_matching_click(
         batch_size,
         n_steps,
@@ -112,6 +115,7 @@ def train_denoiser_score_matching_click(
         pad_crop,
         sn_val,
         stride,
+        image_size,
     ):
     train_denoiser_score_matching(
         batch_size=batch_size,
@@ -123,6 +127,7 @@ def train_denoiser_score_matching_click(
         pad_crop=pad_crop,
         sn_val=sn_val,
         stride=stride,
+        image_size=image_size,
     )
 
 

@@ -62,6 +62,8 @@ def train_denoiser_score_matching(
         additional_info += f'_lr{lr}'
     if not stride:
         additional_info += '_no_stride'
+    if image_size != 320:
+        additional_info += f'_is{image_size}'
     for step, batch in tqdm(enumerate(train_mri_gen), total=n_steps, desc='Steps'):
         loss, params, state, sn_state, opt_state = update(params, state, sn_state, next(rng_seq), opt_state, batch)
         losses.append(loss)

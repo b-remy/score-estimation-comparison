@@ -32,7 +32,6 @@ def load_image(file, image_size=320):
         n_slices = im_shape[0]
         i_slice = random.randint(0, n_slices - 1)
         image = im_h5[i_slice]
-    image = crop_center(image)
     if image_size != 320:
         image = resize(image, (image_size, image_size))
     return image
@@ -45,6 +44,7 @@ def load_image_complex(file, image_size=320):
         i_slice = random.randint(0, n_slices - 1)
         kspace = kspace_h5[i_slice]
     image = ifft(kspace)
+    image = crop_center(image)
     if image_size != 320:
         image = resize(image, (image_size, image_size))
     return image

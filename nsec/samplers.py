@@ -7,6 +7,7 @@ from __future__ import print_function
 import jax
 import jax.numpy as jnp
 import tensorflow_probability as tfp; tfp = tfp.experimental.substrates.jax
+from tensorflow_probability.python.mcmc.internal._jax import util as mcmc_util
 
 __all__ = [
     'ScoreUncalibratedHamiltonianMonteCarlo',
@@ -21,24 +22,28 @@ class ScoreUncalibratedHamiltonianMonteCarlo(tfp.mcmc.UncalibratedHamiltonianMon
                step_size,
                num_leapfrog_steps,
                num_delta_logp_steps,
+               target_log_prob_fn=None,
                state_gradients_are_stopped=False,
                seed=None,
                store_parameters_in_results=False,
                name=None):
-    # We begin by creating a fake logp, with the correct scores
-    @jax.custom_jvp
-    def fake_logp(x):
-      return 0.
-    @fake_logp.defjvp
-    def fake_logp_jvp(primals, tangents):
-      x, = primals
-      x_dot, = tangents
-      primal_out = fake_logp(x)
-      s = target_score_fn(x)
-      tangent_out = x_dot.dot(s)
-      return primal_out, tangent_out
 
-    super().__init__(fake_logp,
+    if target_log_prob_fn is None:
+      # We begin by creating a fake logp, with the correct scores
+      @jax.custom_jvp
+      def fake_logp(x):
+        return 0.
+      @fake_logp.defjvp
+      def fake_logp_jvp(primals, tangents):
+        x, = primals
+        x_dot, = tangents
+        primal_out = fake_logp(x)
+        s = target_score_fn(x)
+        tangent_out = x_dot.dot(s)
+        return primal_out, tangent_out
+      target_log_prob_fn = fake_logp
+
+    super().__init__(target_log_prob_fn,
                      step_size,
                      num_leapfrog_steps,
                      state_gradients_are_stopped,
@@ -56,10 +61,15 @@ class ScoreUncalibratedHamiltonianMonteCarlo(tfp.mcmc.UncalibratedHamiltonianMon
                                                             seed)
     # We need to integrate the score over a path between input and output points
     # Direction of integration
-    v = next_state_parts - current_state
+    if mcmc_util.is_list_like(current_state):
+      v = next_state_parts[0] - current_state[0]
+      cs = current_state[0]
+    else:
+      v = next_state_parts - current_state
+      cs = current_state
     @jax.vmap
     def integrand(t):
-      return self._parameters['target_score_fn']( t * v + current_state).dot(v)
+      return jnp.sum(self._parameters['target_score_fn']( t * v + cs)*v, axis=-1)
     delta_logp = simps(integrand,0.,1., self._parameters['num_delta_logp_steps'])
     new_kernel_results2 = new_kernel_results._replace(log_acceptance_correction=new_kernel_results.log_acceptance_correction + delta_logp)
     return next_state_parts, new_kernel_results2
@@ -70,24 +80,28 @@ class ScoreUncalibratedLangevin(tfp.mcmc.UncalibratedLangevin):
                step_size,
                num_delta_logp_steps,
                volatility_fn=None,
+               target_log_prob_fn=None,
                parallel_iterations=10,
                compute_acceptance=True,
                seed=None,
                name=None):
 
-    # We begin by creating a fake logp, with the correct scores
-    @jax.custom_jvp
-    def fake_logp(x):
-      return 0.
-    @fake_logp.defjvp
-    def fake_logp_jvp(primals, tangents):
-      x, = primals
-      x_dot, = tangents
-      primal_out = fake_logp(x)
-      s = target_score_fn(x)
-      tangent_out = x_dot.dot(s)
-      return primal_out, tangent_out
-    super().__init__(fake_logp,
+    if target_log_prob_fn is None:
+      # We begin by creating a fake logp, with the correct scores
+      @jax.custom_jvp
+      def fake_logp(x):
+        return 0.
+      @fake_logp.defjvp
+      def fake_logp_jvp(primals, tangents):
+        x, = primals
+        x_dot, = tangents
+        primal_out = fake_logp(x)
+        s = target_score_fn(x)
+        tangent_out = x_dot.dot(s)
+        return primal_out, tangent_out
+      target_log_prob_fn = fake_logp
+
+    super().__init__(target_log_prob_fn,
                      step_size,
                      volatility_fn=volatility_fn,
                      parallel_iterations=parallel_iterations,
@@ -123,6 +137,7 @@ class ScoreHamiltonianMonteCarlo(tfp.mcmc.HamiltonianMonteCarlo):
                num_delta_logp_steps,
                state_gradients_are_stopped=False,
                step_size_update_fn=None,
+               target_log_prob_fn=None,
                seed=None,
                store_parameters_in_results=False,
                name=None):
@@ -170,6 +185,7 @@ class ScoreHamiltonianMonteCarlo(tfp.mcmc.HamiltonianMonteCarlo):
     mh_kwargs = {} if seed is None else dict(seed=self._seed_stream())
     self._impl = tfp.mcmc.MetropolisHastings(
         inner_kernel=ScoreUncalibratedHamiltonianMonteCarlo(
+            target_log_prob_fn=target_log_prob_fn,
             target_score_fn=target_score_fn,
             step_size=step_size,
             num_leapfrog_steps=num_leapfrog_steps,
@@ -330,6 +346,7 @@ class ScoreMetropolisAdjustedLangevinAlgorithm(tfp.mcmc.MetropolisAdjustedLangev
                step_size,
                num_delta_logp_steps,
                volatility_fn=None,
+               target_log_prob_fn=None,
                seed=None,
                parallel_iterations=10,
                name=None):
@@ -377,6 +394,7 @@ class ScoreMetropolisAdjustedLangevinAlgorithm(tfp.mcmc.MetropolisAdjustedLangev
     uncal_kwargs = {} if seed is None else dict(seed=seed_stream())
     impl = tfp.mcmc.MetropolisHastings(
         inner_kernel=ScoreUncalibratedLangevin(
+            target_log_prob_fn=target_log_prob_fn,
             target_score_fn=target_score_fn,
             step_size=step_size,
             num_delta_logp_steps=num_delta_logp_steps,

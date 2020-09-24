@@ -277,9 +277,9 @@ class UResNet(hk.Module):
 
   def __call__(self, inputs, condition, is_training, test_local_stats=False):
     out = inputs
-    out = jnp.concatenate([out, condition*jnp.ones_like(out)[...,[0]]], axis=-1)
     if self.pad_crop:
         out, padding = pad_for_pool(inputs, 4)
+    out = jnp.concatenate([out, condition*jnp.ones_like(out)[...,[0]]], axis=-1)
     out = self.initial_conv(out)
 
     # Decreasing resolution

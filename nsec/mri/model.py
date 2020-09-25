@@ -60,7 +60,7 @@ def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2
         if not magnitude_images:
             real_loss = jnp.mean((su.real / s + s * res.real)**2)
             imag_loss = jnp.mean((su.imag / s + s * res.imag)**2)
-            loss = real_loss + imag_loss
+            loss = (real_loss + imag_loss) / 2
         else:
             loss = jnp.mean((su / s + s * res)**2)
         return loss, state

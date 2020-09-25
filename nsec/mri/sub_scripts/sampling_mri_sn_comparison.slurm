@@ -31,4 +31,4 @@ export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/nsec_complex/
 export FIGURES_DIR=$SCRATCH/nsec_figures/sampling_sn${opt[$SLURM_ARRAY_TASK_ID]}/
 
-srun python ./nsec/mri/sampling.py -ns 100000 -b 2 -c CORPD_FBK -is 64 -sn ${opt[$SLURM_ARRAY_TASK_ID]}
+srun python ./nsec/mri/sampling.py -ns 100000 --nps-train 50.0 -b 2 -c CORPD_FBK -is 64 -sn ${opt[$SLURM_ARRAY_TASK_ID]}

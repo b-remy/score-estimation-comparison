@@ -47,7 +47,7 @@ def reconstruct_image_map(
         magnitude_images=False,
         sn_val=2.,
         lr=1e-4,
-        stride=True,
+        stride=False,
         image_size=image_size,
     )
     model_name = get_model_name(

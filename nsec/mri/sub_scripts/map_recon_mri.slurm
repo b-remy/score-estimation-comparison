@@ -25,4 +25,4 @@ export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/
 export FIGURES_DIR=$SCRATCH/nsec_figures/
 
-srun python ./nsec/mri/map_reconstruction.py -n 100000 -b 10 -c CORPD_FBK -is 64 -nps 50 -h
+srun python ./nsec/mri/map_reconstruction.py -n 1000000 -b 10 -c CORPD_FBK -is 64 -nps 50 -h -e 0.000001

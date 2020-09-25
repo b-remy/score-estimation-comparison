@@ -63,9 +63,9 @@ def reconstruct_image_map(
     (kspace, mask), image = next(val_mri_gen)
 
     for ind in range(batch_size):
-        fourier_obj = FFT2(mask)
-        fourier_pure = FFT2(jnp.ones_like(mask))
-        x_zfilled = fourier_obj.adj_op(kspace[..., 0])[..., None]
+        fourier_obj = FFT2(mask[ind])
+        fourier_pure = FFT2(jnp.ones_like(mask[ind]))
+        x_zfilled = fourier_obj.adj_op(kspace[ind, ..., 0])[None, ..., None]
         # gradient descent for MAP, with step size eps
         n_steps = int(3*1e5)
         intermediate_images = []
@@ -75,9 +75,9 @@ def reconstruct_image_map(
         def update(x_old):
             x_new = x_old + eps * score(x_old, jnp.zeros((1,1,1,1))+temp, is_training=False)[0]
             if hard_data_consistency:
-                kspace_new = fourier_pure.op(x_new)
-                kspace_new = mask * kspace + (1-mask) * kspace_new
-                x_new = fourier_pure.adj_op(kspace_new)
+                kspace_new = fourier_pure.op(x_new[0, ..., 0])
+                kspace_new = mask * kspace[ind, ..., 0] + (1-mask) * kspace_new
+                x_new = fourier_pure.adj_op(kspace_new)[None, ..., None]
             else:
                 raise NotImplementedError('Soft data consistency is not implemented yet')
             return x_new

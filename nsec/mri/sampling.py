@@ -28,6 +28,7 @@ def sample_from_image_hmc(
         num_results=10_000,
         num_burnin_steps=10,
         step_size=1e-1,
+        sn_val=2.0,
     ):
     val_mri_gen = mri_noisy_generator(
         split='val',
@@ -45,10 +46,10 @@ def sample_from_image_hmc(
         contrast=contrast,
         pad_crop=False,
         magnitude_images=magnitude_images,
-        sn_val=2.,
         lr=1e-4,
         stride=False,
         image_size=image_size,
+        sn_val=sn_val,
     )
     model_name = get_model_name(
         noise_power_spec=noise_power_spec_training,
@@ -149,6 +150,7 @@ def sample_from_image_hmc(
 @click.option('num_results', '-ns', type=int, default=10_000)
 @click.option('num_burnin_steps', '-nb', type=int, default=10)
 @click.option('step_size', '-s', type=float, default=1e-1)
+@click.option('sn_val', '-sn', type=float, default=2.)
 def sample_from_image_hmc_click(
         batch_size,
         contrast,
@@ -160,6 +162,7 @@ def sample_from_image_hmc_click(
         num_results,
         num_burnin_steps,
         step_size,
+        sn_val,
     ):
     sample_from_image_hmc(
         batch_size=batch_size,
@@ -172,6 +175,7 @@ def sample_from_image_hmc_click(
         num_results=num_results,
         num_burnin_steps=num_burnin_steps,
         step_size=step_size,
+        sn_val=sn_val,
     )
 
 

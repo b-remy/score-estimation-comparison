@@ -19,6 +19,35 @@ def ifft(kspace):
     image = image * scaling_norm
     return image
 
+def fft(image):
+    scaling_norm = np.sqrt(np.prod(image.shape[-2:]))
+    kspace = np.fft.ifftshift(np.fft.fft2(np.fft.fftshift(image, axes=(-2, -1))), axes=(-2, -1))
+    kspace = kspace / scaling_norm
+    return kspace
+
+def gen_mask(kspace, acceleration_factor=4):
+    # inspired by https://github.com/facebookresearch/fastMRI/blob/master/common/subsample.py
+    shape = kspace.shape
+    num_cols = shape[-1]
+
+    center_fraction = (32 // acceleration_factor) / 100
+
+    # Create the mask
+    num_low_freqs = int(round(num_cols * center_fraction))
+    prob = (num_cols / acceleration_factor - num_low_freqs) / (num_cols - num_low_freqs)
+    mask = np.random.default_rng(None).uniform(size=num_cols) < prob
+    pad = (num_cols - num_low_freqs + 1) // 2
+    mask[pad:pad + num_low_freqs] = 1
+
+    # Reshape the mask
+    mask_shape = [1 for _ in shape]
+    mask_shape[-1] = num_cols
+    mask = mask.reshape(*mask_shape)
+    tiling = list(kspace.shape)
+    tiling[-1] = 1
+    mask = np.tile(mask, tiling)
+    return mask
+
 def crop_center(img, cropx=320, cropy=None):
     y, x = img.shape
     if cropy is None:
@@ -113,5 +142,41 @@ def mri_noisy_generator(
         image_noisy = batch + noise
         model_inputs = (image_noisy, noise_power)
         model_outputs = noise
+        i += 1
+        yield model_inputs, model_outputs
+
+def mri_recon_generator(
+        split='train',
+        batch_size=32,
+        acceleration_factor=4,
+        scale_factor=1e6,
+        image_size=320,
+        contrast=None,
+    ):
+    i = 0
+    if split == 'train':
+        data_path = train_path
+    elif split == 'val':
+        data_path = val_path
+    data_files = list(data_path.glob('*.h5'))
+    if contrast is not None:
+        data_files = [f for f in data_files if load_contrast(f) == contrast]
+    n_files = len(data_files)
+    n_batches = n_files // batch_size
+    while True:
+        relative_i = i % n_batches
+        next_batch_files = data_files[relative_i*batch_size: (relative_i+1)*batch_size]
+        batch = np.array(Parallel(n_jobs=batch_size)(
+            delayed(partial(load_image_complex, image_size=image_size))(file)
+            for file in next_batch_files
+        ))
+        batch = scale_factor * batch
+        kspace = fft(batch)
+        mask = gen_mask(kspace, acceleration_factor=acceleration_factor)
+        kspace_masked = kspace * mask
+        kspace_masked = kspace_masked[..., None]
+        batch = batch[..., None]
+        model_inputs = (kspace_masked, mask)
+        model_outputs = batch
         i += 1
         yield model_inputs, model_outputs

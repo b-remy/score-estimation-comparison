@@ -8,6 +8,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+from skimage.metrics import peak_signal_noise_ratio as psnr
 import tensorflow_probability as tfp; tfp = tfp.experimental.substrates.jax
 
 from nsec.datasets.fastmri import mri_recon_generator
@@ -68,7 +69,6 @@ def reconstruct_image_map(
         fourier_pure = FFT2(jnp.ones_like(mask[ind]))
         x_zfilled = fourier_obj.adj_op(kspace[ind, ..., 0])[None, ..., None]
         # gradient descent for MAP, with step size eps
-        n_steps = int(3*1e5)
         intermediate_images = []
         im_save_freq = n_steps//10
 
@@ -92,15 +92,30 @@ def reconstruct_image_map(
 
 
         fig, axs = plt.subplots(2, 6, sharex=True, sharey=True, figsize=(9, 3), gridspec_kw={'wspace': 0, 'hspace': 0})
-        axs[0, 0].imshow(jnp.squeeze(jnp.abs(image[ind])), vmin=0, vmax=150)
+        target_image = jnp.squeeze(jnp.abs(image[ind]))
+        axs[0, 0].imshow(target_image, vmin=0, vmax=150)
+        axs[0, 0].axis('off')
         axs[0, 1].imshow(jnp.squeeze(jnp.abs(x_zfilled[0])), vmin=0, vmax=150)
+        axs[0, 1].axis('off')
         for i in range(len(intermediate_images)):
             if i < 4:
                 ax = axs[0, i+2]
             else:
                 ax = axs[1, i - 4]
             ax.imshow(jnp.squeeze(jnp.abs(intermediate_images[i])), vmin=0, vmax=150)
+            ax.axis('off')
         plt.tight_layout()
+        beginning_psnr = psnr(
+            target_image,
+            jnp.squeeze(jnp.abs(x_zfilled[0])),
+            data_range=jnp.max(target_image) - jnp.min(target_image),
+        )
+        end_psnr = psnr(
+            target_image,
+            jnp.squeeze(jnp.abs(intermediate_images[-1])),
+            data_range=jnp.max(target_image) - jnp.min(target_image),
+        )
+        fig.suptitle(f'Beginning PSNR: {beginning_psnr}, End PSNR: {end_psnr}')
         plt.savefig(figures_dir / f'mri_recon_{ind}.png')
 
 @click.command()

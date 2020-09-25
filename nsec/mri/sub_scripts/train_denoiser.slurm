@@ -29,4 +29,4 @@ opt[0]="-lr 0.0001"
 opt[1]="-sn 10.0"
 opt[2]="-sn 0.1"
 
-srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]} -n 50000 -c CORPD_FBK -pc -nps 50
+srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]} -n 50000 -c CORPD_FBK -nps 50

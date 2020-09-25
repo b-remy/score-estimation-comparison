@@ -125,7 +125,7 @@ def reconstruct_image_map(
 @click.option('noise_power_spec_training', '-nps', type=float, default=30.)
 @click.option('image_size', '-is', type=int, default=320)
 @click.option('temp', '-t', type=float, default=1e-4)
-@click.option('n_steps', '-n', type=float, default=300_000)
+@click.option('n_steps', '-n', type=int, default=300_000)
 @click.option('eps', '-e', type=float, default=1e-5)
 @click.option('hard_data_consistency', '-h', is_flag=True)
 @click.option('soft_dc_lambda', '-l', type=float, default=1.)

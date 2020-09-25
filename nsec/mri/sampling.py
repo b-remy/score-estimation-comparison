@@ -127,11 +127,12 @@ def sample_from_image_hmc(
             figsize=(9, 9),
             gridspec_kw={'wspace': 0, 'hspace': 0},
         )
+        n_out = 1 if magnitude_images else 2
         for i in range(5):
             for j in range(5):
                 n_ax = i + 5 * j
                 image = jnp.linalg.norm(
-                    samples_shmc[(n_accepted//25) * n_ax].reshape((image_size, -1, 1)),
+                    samples_shmc[(n_accepted//25) * n_ax].reshape((image_size, -1, n_out)),
                     axis=-1,
                 )
                 axs[i, j].imshow(image)

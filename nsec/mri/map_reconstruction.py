@@ -28,6 +28,7 @@ def reconstruct_image_map(
         n_steps=300_000,
         eps=1e-5,
         hard_data_consistency=True,
+        soft_dc_lambda=1.,
     ):
     val_mri_gen = mri_recon_generator(
         split='val',
@@ -79,7 +80,7 @@ def reconstruct_image_map(
                 kspace_new = mask * kspace[ind, ..., 0] + (1-mask) * kspace_new
                 x_new = fourier_pure.adj_op(kspace_new)[None, ..., None]
             else:
-                raise NotImplementedError('Soft data consistency is not implemented yet')
+                x_new = x_new - soft_dc_lambda * fourier_obj.adj_op(fourier_obj.op(x_new) - kspace[ind, ..., 0])
             return x_new
 
         x_old = np.copy(x_zfilled)
@@ -112,6 +113,7 @@ def reconstruct_image_map(
 @click.option('n_steps', '-n', type=float, default=300_000)
 @click.option('eps', '-e', type=float, default=1e-5)
 @click.option('hard_data_consistency', '-h', is_flag=True)
+@click.option('soft_dc_lambda', '-l', type=float, default=1.)
 def reconstruct_image_map_click(
         batch_size,
         contrast,
@@ -122,6 +124,7 @@ def reconstruct_image_map_click(
         n_steps,
         eps,
         hard_data_consistency,
+        soft_dc_lambda,
     ):
     reconstruct_image_map(
         batch_size=batch_size,
@@ -133,6 +136,7 @@ def reconstruct_image_map_click(
         n_steps=n_steps,
         eps=eps,
         hard_data_consistency=hard_data_consistency,
+        soft_dc_lambda=soft_dc_lambda,
     )
 
 

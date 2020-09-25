@@ -18,6 +18,7 @@ from nsec.mri.model import get_model, get_additional_info, get_model_name
 
 checkpoints_dir = Path(os.environ['CHECKPOINTS_DIR'])
 figures_dir = Path(os.environ['FIGURES_DIR'])
+figures_dir.mkdir(exist_ok=True)
 
 def reconstruct_image_map(
         batch_size=4,
@@ -30,6 +31,7 @@ def reconstruct_image_map(
         eps=1e-5,
         hard_data_consistency=True,
         soft_dc_lambda=1.,
+        sn_val=2.0,
     ):
     val_mri_gen = mri_recon_generator(
         split='val',
@@ -47,7 +49,7 @@ def reconstruct_image_map(
         contrast=contrast,
         pad_crop=False,
         magnitude_images=False,
-        sn_val=2.,
+        sn_val=sn_val,
         lr=1e-4,
         stride=False,
         image_size=image_size,
@@ -129,6 +131,7 @@ def reconstruct_image_map(
 @click.option('eps', '-e', type=float, default=1e-5)
 @click.option('hard_data_consistency', '-h', is_flag=True)
 @click.option('soft_dc_lambda', '-l', type=float, default=1.)
+@click.option('sn_val', '-sn', type=float, default=2.)
 def reconstruct_image_map_click(
         batch_size,
         contrast,
@@ -140,6 +143,7 @@ def reconstruct_image_map_click(
         eps,
         hard_data_consistency,
         soft_dc_lambda,
+        sn_val,
     ):
     reconstruct_image_map(
         batch_size=batch_size,
@@ -152,6 +156,7 @@ def reconstruct_image_map_click(
         eps=eps,
         hard_data_consistency=hard_data_consistency,
         soft_dc_lambda=soft_dc_lambda,
+        sn_val=sn_val,
     )
 
 

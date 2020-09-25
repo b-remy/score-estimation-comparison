@@ -39,7 +39,7 @@ def sample_from_image_hmc(
         magnitude=magnitude_images,
         image_size=image_size,
     )
-    model, _, _, _, _, _, _, rng_seq = get_model(opt=False, magnitude_images=True, pad_crop=False, stride=False)
+    model, _, _, _, _, _, _, rng_seq = get_model(opt=False, magnitude_images=magnitude_images, pad_crop=False, stride=False)
 
     # Importing saved model
     additional_info = get_additional_info(

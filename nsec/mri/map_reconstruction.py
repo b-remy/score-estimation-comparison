@@ -1,0 +1,140 @@
+import os
+from pathlib import Path
+
+import click
+os.environ['XLA_FLAGS']='--xla_gpu_cuda_data_dir=/gpfslocalsys/cuda/10.1.2'
+import jax
+import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import numpy as np
+import pickle
+import tensorflow_probability as tfp; tfp = tfp.experimental.substrates.jax
+
+from nsec.datasets.fastmri import mri_recon_generator
+from nsec.mri.fourier import FFT2
+from nsec.mri.model import get_model, get_additional_info, get_model_name
+
+
+checkpoints_dir = Path(os.environ['CHECKPOINTS_DIR'])
+figures_dir = Path(os.environ['FIGURES_DIR'])
+
+def reconstruct_image_map(
+        batch_size=4,
+        contrast=None,
+        acceleration_factor=4,
+        noise_power_spec_training=30.,
+        image_size=320,
+        temp=1e-4,
+        n_steps=300_000,
+        eps=1e-5,
+        hard_data_consistency=True,
+    ):
+    val_mri_gen = mri_recon_generator(
+        split='val',
+        batch_size=batch_size,
+        contrast=contrast,
+        acceleration_factor=acceleration_factor,
+        scale_factor=1e6,
+        image_size=image_size,
+    )
+
+    model, _, _, _, _, _, _, rng_seq = get_model(opt=False, magnitude_images=False, pad_crop=False, stride=False)
+
+    # Importing saved model
+    additional_info = get_additional_info(
+        contrast=contrast,
+        pad_crop=False,
+        magnitude_images=False,
+        sn_val=2.,
+        lr=1e-4,
+        stride=True,
+        image_size=image_size,
+    )
+    model_name = get_model_name(
+        noise_power_spec=noise_power_spec_training,
+        additional_info=additional_info,
+    )
+    with open(checkpoints_dir / model_name, 'rb') as file:
+        params, state, _ = pickle.load(file)
+
+    from functools import partial
+    score = partial(model.apply, params, state, next(rng_seq))
+
+    (kspace, mask), image = next(val_mri_gen)
+
+    for ind in range(batch_size):
+        fourier_obj = FFT2(mask)
+        fourier_pure = FFT2(jnp.ones_like(mask))
+        x_zfilled = fourier_obj.adj_op(kspace[..., 0])[..., None]
+        # gradient descent for MAP, with step size eps
+        n_steps = int(3*1e5)
+        intermediate_images = []
+        im_save_freq = n_steps//10
+
+        @jax.jit
+        def update(x_old):
+            x_new = x_old + eps * score(x_old, jnp.zeros((1,1,1,1))+temp, is_training=False)[0]
+            if hard_data_consistency:
+                kspace_new = fourier_pure.op(x_new)
+                kspace_new = mask * kspace + (1-mask) * kspace_new
+                x_new = fourier_pure.adj_op(kspace_new)
+            else:
+                raise NotImplementedError('Soft data consistency is not implemented yet')
+            return x_new
+
+        x_old = np.copy(x_zfilled)
+        for i_step in range(n_steps):
+            x_new = update(x_old)
+            if (i_step + 1) % im_save_freq == 0:
+                intermediate_images.append(x_new.block_until_ready())
+            x_old = x_new
+
+
+        fig, axs = plt.subplots(2, 6, sharex=True, sharey=True, figsize=(9, 3), gridspec_kw={'wspace': 0, 'hspace': 0})
+        axs[0, 0].imshow(jnp.squeeze(jnp.abs(image[ind])), vmin=0, vmax=150)
+        axs[0, 1].imshow(jnp.squeeze(jnp.abs(x_zfilled[0])), vmin=0, vmax=150)
+        for i in range(len(intermediate_images)):
+            if i < 4:
+                ax = axs[0, i+2]
+            else:
+                ax = axs[1, i - 4]
+            ax.imshow(jnp.squeeze(jnp.abs(intermediate_images[i])), vmin=0, vmax=150)
+        plt.tight_layout()
+        plt.savefig(figures_dir / f'mri_recon_{ind}.png')
+
+@click.command()
+@click.option('batch_size', '-b', type=int, default=4)
+@click.option('contrast', '-c', type=str, default=None)
+@click.option('acceleration_factor', '-a', type=int, default=4)
+@click.option('noise_power_spec_training', '-nps', type=float, default=30.)
+@click.option('image_size', '-is', type=int, default=320)
+@click.option('temp', '-t', type=float, default=1e-4)
+@click.option('n_steps', '-n', type=float, default=300_000)
+@click.option('eps', '-e', type=float, default=1e-5)
+@click.option('hard_data_consistency', '-h', is_flag=True)
+def reconstruct_image_map_click(
+        batch_size,
+        contrast,
+        acceleration_factor,
+        noise_power_spec_training,
+        image_size,
+        temp,
+        n_steps,
+        eps,
+        hard_data_consistency,
+    ):
+    reconstruct_image_map(
+        batch_size=batch_size,
+        contrast=contrast,
+        acceleration_factor=acceleration_factor,
+        noise_power_spec_training=noise_power_spec_training,
+        image_size=image_size,
+        temp=temp,
+        n_steps=n_steps,
+        eps=eps,
+        hard_data_consistency=hard_data_consistency,
+    )
+
+
+if __name__ == '__main__':
+    reconstruct_image_map_click()

@@ -14,7 +14,9 @@ train_path = fastmri_path / 'singlecoil_train' / 'singlecoil_train'
 val_path = fastmri_path / 'singlecoil_val'
 
 def ifft(kspace):
+    scaling_norm = np.sqrt(np.prod(kspace.shape[-2:]))
     image = np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(kspace, axes=(-2, -1))), axes=(-2, -1))
+    image = image * scaling_norm
     return image
 
 def crop_center(img, cropx=320, cropy=None):

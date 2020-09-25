@@ -12,7 +12,7 @@
 #SBATCH --qos=qos_gpu-t3
 #SBATCH --output=denoiser_score_est_train%A_%a.out # nom du fichier de sortie
 #SBATCH --error=denoiser_score_est_train%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
-#SBATCH --array=0-2
+#SBATCH --array=0-5
 
 set -x
 cd $WORK/score-estimation-comparison
@@ -28,5 +28,8 @@ export CHECKPOINTS_DIR=$SCRATCH//nsec_complex
 opt[0]="-sn 1."
 opt[1]="-sn 0.5"
 opt[2]="-sn 0.1"
+opt[3]=""
+opt[4]="-sn 5."
+opt[5]="-sn 10."
 
-srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]} -n 50000 -c CORPD_FBK -nps 50
+srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]} -n 100000 -c CORPD_FBK -nps 50 -lr 0.0001

@@ -77,7 +77,7 @@ def reconstruct_image_map(
             x_new = x_old + eps * score(x_old, jnp.zeros((1,1,1,1))+temp, is_training=False)[0]
             if hard_data_consistency:
                 kspace_new = fourier_pure.op(x_new[0, ..., 0])
-                kspace_new = mask * kspace[ind, ..., 0] + (1-mask) * kspace_new
+                kspace_new = mask[ind] * kspace[ind, ..., 0] + (1-mask[ind]) * kspace_new
                 x_new = fourier_pure.adj_op(kspace_new)[None, ..., None]
             else:
                 x_new = x_new - soft_dc_lambda * fourier_obj.adj_op(fourier_obj.op(x_new) - kspace[ind, ..., 0])

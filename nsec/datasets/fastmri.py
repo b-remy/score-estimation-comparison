@@ -77,7 +77,9 @@ def load_image_complex(file, image_size=320):
     image = ifft(kspace)
     image = crop_center(image)
     if image_size != 320:
-        image = resize(image, (image_size, image_size))
+        image_real = resize(image.real, (image_size, image_size))
+        image_imag = resize(image.imag, (image_size, image_size))
+        image = image_real + 1j * image_imag
     return image
 
 def load_contrast(file):

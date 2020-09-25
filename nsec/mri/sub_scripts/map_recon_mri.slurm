@@ -8,7 +8,7 @@
 # de Slurm "multithread" fait bien référence à l'hyperthreading.
 #SBATCH --hint=nomultithread         # on réserve des coeurs physiques et non logiques
 #SBATCH --distribution=block:block   # on épingle les tâches sur des coeurs contigus
-#SBATCH --time=10:00:00              # temps d’exécution maximum demande (HH:MM:SS)
+#SBATCH --time=20:00:00              # temps d’exécution maximum demande (HH:MM:SS)
 #SBATCH --qos=qos_gpu-t3
 #SBATCH --output=recon_map_mri%A_%a.out # nom du fichier de sortie
 #SBATCH --error=recon_map_mri%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
@@ -25,4 +25,4 @@ export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/
 export FIGURES_DIR=$SCRATCH/nsec_figures/
 
-srun python ./nsec/mri/map_reconstruction.py -n 100 -b 2 -c CORPD_FBK -is 64 -nps 50 -h
+srun python ./nsec/mri/map_reconstruction.py -n 100000 -b 10 -c CORPD_FBK -is 64 -nps 50 -h

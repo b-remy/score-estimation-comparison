@@ -12,7 +12,7 @@
 #SBATCH --qos=qos_gpu-t4
 #SBATCH --output=denoiser_score_est_train_small_complex%A_%a.out # nom du fichier de sortie
 #SBATCH --error=denoiser_score_est_train_small_complex%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
-#SBATCH --array=0-3
+#SBATCH --array=0-1
 
 set -x
 cd $WORK/score-estimation-comparison
@@ -25,9 +25,7 @@ module load tensorflow-gpu/py3/2.3.0
 export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/nsec_complex
 
-opt[0]=""
-opt[1]="-sn 1.0"
-opt[2]="-sn 0.5"
-opt[3]="-sn 0.1"
+opt[0]="-sn 5."
+opt[1]="-sn 10."
 
 srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]}  -c CORPD_FBK -is 64 -nps 50 -n 100000 -lr 0.0001

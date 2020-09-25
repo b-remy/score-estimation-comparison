@@ -11,7 +11,7 @@ import tensorflow_probability as tfp; tfp = tfp.experimental.substrates.jax
 from tqdm import tqdm
 
 from nsec.datasets.fastmri import mri_noisy_generator
-from nsec.mri.model import get_model
+from nsec.mri.model import get_model, get_additional_info, get_model_name
 
 
 def train_denoiser_score_matching(
@@ -49,28 +49,26 @@ def train_denoiser_score_matching(
 
     losses = []
     print('Finished initializing jax, now onto the optim')
-    additional_info = ""
-    if contrast is not None:
-        additional_info += f"_{contrast}"
-    if pad_crop:
-        additional_info += "_padcrop"
-    if magnitude_images:
-        additional_info += "_mag"
-    if sn_val != 2.:
-        additional_info += f'_sn{sn_val}'
-    if lr != 1e-3:
-        additional_info += f'_lr{lr}'
-    if not stride:
-        additional_info += '_no_stride'
-    if image_size != 320:
-        additional_info += f'_is{image_size}'
+    additional_info = get_additional_info(
+        contrast=contrast,
+        pad_crop=pad_crop,
+        magnitude_images=magnitude_images,
+        sn_val=sn_val,
+        lr=lr,
+        stride=stride,
+        image_size=image_size,
+    )
+    model_name = get_model_name(
+        noise_power_spec=noise_power_spec,
+        additional_info=additional_info,
+    )
     for step, batch in tqdm(enumerate(train_mri_gen), total=n_steps, desc='Steps'):
         loss, params, state, sn_state, opt_state = update(params, state, sn_state, next(rng_seq), opt_state, batch)
         losses.append(loss)
         if step%100==0:
             print(step, loss)
         if (step+1)%1000==0:
-            with open(str(Path(os.environ['CHECKPOINTS_DIR']) / f'conv-dae-L2-mri-{noise_power_spec}{additional_info}.pckl'), 'wb') as file:
+            with open(str(Path(os.environ['CHECKPOINTS_DIR']) / model_name), 'wb') as file:
                 pickle.dump([params, state, sn_state], file)
         if step > n_steps:
             break

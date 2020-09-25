@@ -77,3 +77,34 @@ def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2
         return loss, new_params, state, new_sn_state, new_opt_state
 
     return model, loss_fn, update, params, state, sn_state, opt_state, rng_seq
+
+
+def get_additional_info(
+        contrast=None,
+        pad_crop=False,
+        magnitude_images=False,
+        sn_val=2.,
+        lr=1e-3,
+        stride=True,
+        image_size=320,
+    ):
+    additional_info = ""
+    if contrast is not None:
+        additional_info += f"_{contrast}"
+    if pad_crop:
+        additional_info += "_padcrop"
+    if magnitude_images:
+        additional_info += "_mag"
+    if sn_val != 2.:
+        additional_info += f'_sn{sn_val}'
+    if lr != 1e-3:
+        additional_info += f'_lr{lr}'
+    if not stride:
+        additional_info += '_no_stride'
+    if image_size != 320:
+        additional_info += f'_is{image_size}'
+    return additional_info
+
+def get_model_name(noise_power_spec=30., additional_info=''):
+    model_name = f'conv-dae-L2-mri-{noise_power_spec}{additional_info}.pckl'
+    return model_name

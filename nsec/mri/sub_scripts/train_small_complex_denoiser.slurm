@@ -23,9 +23,9 @@ conda deactivate fastmri-tf-2.1.0
 module load tensorflow-gpu/py3/2.3.0
 
 export FASTMRI_DATA_DIR=$SCRATCH/
-export CHECKPOINTS_DIR=$SCRATCH/nsec_long
+export CHECKPOINTS_DIR=$SCRATCH/
 
-opt[0]=""
-opt[1]="-pc"
+opt[0]="-n 100000 -lr 0.0001"
+opt[1]="-n 100000 -lr 0.001"
 
-srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]} -n 50000 -c CORPD_FBK -lr 0.0001 -is 64 -nps 50
+srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]}  -c CORPD_FBK -is 64 -nps 50

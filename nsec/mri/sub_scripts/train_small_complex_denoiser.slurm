@@ -23,7 +23,7 @@ conda deactivate fastmri-tf-2.1.0
 module load tensorflow-gpu/py3/2.3.0
 
 export FASTMRI_DATA_DIR=$SCRATCH/
-export CHECKPOINTS_DIR=$SCRATCH/
+export CHECKPOINTS_DIR=$SCRATCH/nsec_complex
 
 opt[0]="-n 100000 -lr 0.0001"
 opt[1]="-n 100000 -lr 0.001"

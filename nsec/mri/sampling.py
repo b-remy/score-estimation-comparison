@@ -17,7 +17,7 @@ from nsec.samplers import ScoreHamiltonianMonteCarlo
 checkpoints_dir = Path(os.environ['CHECKPOINTS_DIR'])
 figures_dir = Path(os.environ['FIGURES_DIR'])
 
-def sample__from_image_hmc(
+def sample_from_image_hmc(
         batch_size=4,
         contrast=None,
         magnitude_images=False,
@@ -149,7 +149,7 @@ def sample__from_image_hmc(
 @click.option('num_results', '-ns', type=int, default=10_000)
 @click.option('num_burnin_steps', '-nb', type=int, default=10)
 @click.option('step_size', '-s', type=float, default=1e-1)
-def sample__from_image_hmc_click(
+def sample_from_image_hmc_click(
         batch_size,
         contrast,
         magnitude_images,
@@ -161,7 +161,7 @@ def sample__from_image_hmc_click(
         num_burnin_steps,
         step_size,
     ):
-    sample__from_image_hmc(
+    sample_from_image_hmc(
         batch_size=batch_size,
         contrast=contrast,
         magnitude_images=magnitude_images,
@@ -176,4 +176,4 @@ def sample__from_image_hmc_click(
 
 
 if __name__ == '__main__':
-    sample__from_image_hmc_click()
+    sample_from_image_hmc_click()

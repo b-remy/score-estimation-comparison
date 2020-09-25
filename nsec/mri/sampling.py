@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import click
 os.environ['XLA_FLAGS']='--xla_gpu_cuda_data_dir=/gpfslocalsys/cuda/10.1.2'
 import jax
 import jax.numpy as jnp
@@ -136,3 +137,43 @@ def sample__from_image_hmc(
                 axs[i, j].axis('off')
         plt.tight_layout()
         plt.savefig(figures_dir / f'mri_sampling_{i_batch}.png')
+
+@click.command()
+@click.option('batch_size', '-b', type=int, default=4)
+@click.option('contrast', '-c', type=str, default=None)
+@click.option('magnitude_images', '-m', is_flag=True)
+@click.option('noise_power_spec', '-nps', type=float, default=3.)
+@click.option('noise_power_spec_training', '--nps-train', type=float, default=30.)
+@click.option('image_size', '-is', type=int, default=320)
+@click.option('temp', '-t', type=float, default=1.)
+@click.option('num_results', '-ns', type=int, default=10_000)
+@click.option('num_burnin_steps', '-nb', type=int, default=10)
+@click.option('step_size', '-s', type=float, default=1e-1)
+def sample__from_image_hmc_click(
+        batch_size,
+        contrast,
+        magnitude_images,
+        noise_power_spec,
+        noise_power_spec_training,
+        image_size,
+        temp,
+        num_results,
+        num_burnin_steps,
+        step_size,
+    ):
+    sample__from_image_hmc(
+        batch_size=batch_size,
+        contrast=contrast,
+        magnitude_images=magnitude_images,
+        noise_power_spec=noise_power_spec,
+        noise_power_spec_training=noise_power_spec_training,
+        image_size=image_size,
+        temp=temp,
+        num_results=num_results,
+        num_burnin_steps=num_burnin_steps,
+        step_size=step_size,
+    )
+
+
+if __name__ == '__main__':
+    sample__from_image_hmc_click()

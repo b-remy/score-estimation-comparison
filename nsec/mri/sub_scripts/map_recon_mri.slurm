@@ -28,7 +28,7 @@ opt[2]='0.5'
 opt[3]='0.1'
 
 export FASTMRI_DATA_DIR=$SCRATCH/
-export CHECKPOINTS_DIR=$SCRATCH/nsec_complex
-export FIGURES_DIR=$SCRATCH/nsec_figures/map_recon${opt[$SLURM_ARRAY_TASK_ID]}/
+export CHECKPOINTS_DIR=$SCRATCH/nsec_complex_new_loss
+export FIGURES_DIR=$SCRATCH/nsec_figures/map_recon_new_loss_sn${opt[$SLURM_ARRAY_TASK_ID]}/
 
 srun python ./nsec/mri/map_reconstruction.py -n 1000000 -b 2 -c CORPD_FBK -is 64 -nps 50 -h -e 0.000001 -sn ${opt[$SLURM_ARRAY_TASK_ID]}

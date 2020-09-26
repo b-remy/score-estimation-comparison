@@ -30,7 +30,7 @@ flags.DEFINE_integer("celeba_resolution", 128, "Resolution of celeb dataset, 128
 FLAGS = flags.FLAGS
 
 dset_names={128: 'celeb_a_hq/128',
-            128: 'celeb_a_hq/256',
+            256: 'celeb_a_hq/256',
             512: 'celeb_a_hq/512',
             1024: 'celeb_a_hq/1024'}
 

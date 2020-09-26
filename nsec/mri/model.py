@@ -76,7 +76,7 @@ def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2
 
         new_params = optix.apply_updates(params, updates)
 
-        if sn_fn is not None
+        if sn_fn is not None:
             new_params, new_sn_state = sn_fn.apply(None, sn_state, None, new_params)
         else:
             new_sn_state = None

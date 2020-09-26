@@ -35,7 +35,10 @@ def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2
 
     model = hk.transform_with_state(forward)
 
-    sn_fn = hk.transform_with_state(lambda x: CustomSNParamsTree(ignore_regex='[^?!.]*b$',val=sn_val)(x))
+    if sn_val > 0.:
+        sn_fn = hk.transform_with_state(lambda x: CustomSNParamsTree(ignore_regex='[^?!.]*b$',val=sn_val)(x))
+    else:
+        sn_fn = model
 
     rng_seq = hk.PRNGSequence(42)
     if magnitude_images:

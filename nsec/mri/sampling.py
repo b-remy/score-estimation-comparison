@@ -16,6 +16,7 @@ from nsec.samplers import ScoreHamiltonianMonteCarlo
 
 checkpoints_dir = Path(os.environ['CHECKPOINTS_DIR'])
 figures_dir = Path(os.environ['FIGURES_DIR'])
+figures_dir.mkdir(exist_ok=True)
 
 def sample_from_image_hmc(
         batch_size=4,

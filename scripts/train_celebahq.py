@@ -1,4 +1,7 @@
 # Script for training a denoiser on Celeb_a_hq
+import os
+os.environ['XLA_FLAGS']='--xla_gpu_cuda_data_dir=/gpfslocalsys/cuda/10.0'
+
 from absl import app
 from absl import flags
 import haiku as hk
@@ -17,10 +20,10 @@ from nsec.models.dae.convdae_nostride import SmallUResNet
 from nsec.normalization import SNParamsTree as CustomSNParamsTree
 
 flags.DEFINE_string("output_dir", ".", "Folder where to store model.")
-flags.DEFINE_integer("batch_size", 32, "Size of the batch to train on.")
+flags.DEFINE_integer("batch_size", 64, "Size of the batch to train on.")
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate for the optimizer.")
 flags.DEFINE_integer("training_steps", 5000, "Number of training steps to run.")
-flags.DEFINE_float("noise_dist_std", 1.5, "Standard deviation of the noise distribution.")
+flags.DEFINE_float("noise_dist_std", 1., "Standard deviation of the noise distribution.")
 flags.DEFINE_integer("celeba_resolution", 128, "Resolution of celeb dataset, 128 to 1024.")
 
 FLAGS = flags.FLAGS

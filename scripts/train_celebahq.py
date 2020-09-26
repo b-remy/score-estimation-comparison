@@ -43,7 +43,7 @@ def load_dataset(resolution, batch_size, noise_dist_std):
     # Sample random Gaussian noise
     u = tf.random.normal(tf.shape(x))
     # Sample standard deviation of noise corruption
-    s = noise_dist_std * tf.random.normal((batch_size, 1, 1, 1))
+    s = noise_dist_std * tf.random.normal((tf.shape(x)[0], 1, 1, 1))
     # Create noisy image
     y = x + s * u
     return {'x':x, 'y':y, 'u':u,'s':s}

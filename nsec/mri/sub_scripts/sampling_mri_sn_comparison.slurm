@@ -25,7 +25,7 @@ module load tensorflow-gpu/py3/2.3.0
 opt[0]='0.1'
 opt[1]='0.5'
 opt[2]='1.0'
-opt[2]='2.0'
+opt[3]='2.0'
 
 export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/nsec_complex_new_loss/

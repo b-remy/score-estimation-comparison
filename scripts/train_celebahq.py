@@ -7,6 +7,8 @@ import jax
 from jax.experimental import optix
 import jax.numpy as jnp
 import numpy as onp
+import pickle
+
 # Import tensorflow for dataset creation and manipulation
 import tensorflow.compat.v2 as tf
 tf.enable_v2_behavior()
@@ -15,10 +17,10 @@ import tensorflow_datasets as tfds
 from nsec.models.dae.convdae_nostride import SmallUResNet
 from nsec.normalization import SNParamsTree as CustomSNParamsTree
 
+flags.DEFINE_string("output_dir", ".", "Folder where to store model.")
 flags.DEFINE_integer("batch_size", 32, "Size of the batch to train on.")
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate for the optimizer.")
 flags.DEFINE_integer("training_steps", 5000, "Number of training steps to run.")
-flags.DEFINE_integer("eval_frequency", 100, "How often to evaluate the model.")
 flags.DEFINE_float("noise_dist_std", 1.5, "Standard deviation of the noise distribution.")
 flags.DEFINE_integer("celeba_resolution", 128, "Resolution of celeb dataset, 128 to 1024.")
 
@@ -56,21 +58,15 @@ def forward_fn(x, s, is_training=False):
 
 def lr_schedule(step):
   """Linear scaling rule optimized for 90 epochs."""
-  train_split = dataset.Split.from_string(FLAGS.train_split)
-
-  # See Section 5.1 of https://arxiv.org/pdf/1706.02677.pdf.
-  total_batch_size = FLAGS.train_device_batch_size * jax.device_count()
-  steps_per_epoch = train_split.num_examples / total_batch_size
+  steps_per_epoch = 30000 // FLAGS.batch_size
 
   current_epoch = step / steps_per_epoch  # type: float
-  lr = (0.1 * total_batch_size) / 256
-  lr_linear_till = 5
-  boundaries = jnp.array((30, 60, 80)) * steps_per_epoch
+  lr = (1.0 * FLAGS.batch_size) / 64
+  boundaries = jnp.array((20, 40, 60)) * steps_per_epoch
   values = jnp.array([1., 0.1, 0.01, 0.001]) * lr
 
   index = jnp.sum(boundaries < step)
-  lr = jnp.take(values, index)
-  return lr * jnp.minimum(1., current_epoch / lr_linear_till)
+  return jnp.take(values, index)
 
 def main(_):
   # Make the network
@@ -79,7 +75,10 @@ def main(_):
                                                               val=FLAGS.spectral_norm)(x))
 
   # Initialisation
-  optimizer = optix.adam(1e-3)
+  optimizer = optix.chain(
+      optix.adam(learning_rate=FLAGS.learning_rate),
+      optix.scale_by_schedule(lr_schedule)
+  )
   rng_seq = hk.PRNGSequence(42)
   params, state = model.init(next(rng_seq),
                              jnp.zeros((1, FLAGS.celeba_resolution, FLAGS.celeba_resolution, 3)),
@@ -105,18 +104,22 @@ def main(_):
   train = load_dataset(FLAGS.celeba_resolution, FLAGS.batch_size,
                        FLAGS.noise_dist_std)
 
-  for step in range(1000000):
-
+  losses = []
+  for step in range(FLAGS.training_steps):
     loss, params, state, sn_state, opt_state = update(params, state, sn_state,
                                                       next(rng_seq), opt_state,
-                                                      next())
+                                                      next(train))
     losses.append(loss)
     if step%100==0:
         print(step, loss)
 
+    if step%5000 ==0:
+      with open(FLAGS.output_dir+'/model-%d.pckl'%step, 'wb') as file:
+        pickle.dump([params, state, sn_state], file)
 
 
-
+  with open(FLAGS.output_dir+'/model-final.pckl', 'wb') as file:
+    pickle.dump([params, state, sn_state], file)
 
 if __name__ == "__main__":
   app.run(main)

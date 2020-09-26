@@ -38,7 +38,7 @@ def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2
     if sn_val > 0.:
         sn_fn = hk.transform_with_state(lambda x: CustomSNParamsTree(ignore_regex='[^?!.]*b$',val=sn_val)(x))
     else:
-        sn_fn = model
+        sn_fn = None
 
     rng_seq = hk.PRNGSequence(42)
     if magnitude_images:
@@ -51,7 +51,10 @@ def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2
         opt_state = optimizer.init(params)
     else:
         opt_state = None
-    _, sn_state = sn_fn.init(jax.random.PRNGKey(1), params)
+    if sn_fn is not None:
+        _, sn_state = sn_fn.init(jax.random.PRNGKey(1), params)
+    else:
+        sn_state = None
 
 
     @jax.jit
@@ -73,7 +76,10 @@ def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2
 
         new_params = optix.apply_updates(params, updates)
 
-        new_params, new_sn_state = sn_fn.apply(None, sn_state, None, new_params)
+        if sn_fn is not None
+            new_params, new_sn_state = sn_fn.apply(None, sn_state, None, new_params)
+        else:
+            new_sn_state = None
 
         return loss, new_params, state, new_sn_state, new_opt_state
 

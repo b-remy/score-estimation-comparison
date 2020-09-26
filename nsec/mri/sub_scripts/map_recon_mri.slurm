@@ -12,7 +12,7 @@
 #SBATCH --qos=qos_gpu-t3
 #SBATCH --output=recon_map_mri%A_%a.out # nom du fichier de sortie
 #SBATCH --error=recon_map_mri%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
-#SBATCH --array=0-3
+#SBATCH --array=0-1
 
 set -x
 cd $WORK/score-estimation-comparison
@@ -22,13 +22,11 @@ module purge
 conda deactivate fastmri-tf-2.1.0
 module load tensorflow-gpu/py3/2.3.0
 
-opt[0]='2.0'
-opt[1]='1.0'
-opt[2]='0.5'
-opt[3]='0.1'
+opt[0]='5.0'
+opt[1]='10.0'
 
 export FASTMRI_DATA_DIR=$SCRATCH/
-export CHECKPOINTS_DIR=$SCRATCH/nsec_complex_new_loss
+export CHECKPOINTS_DIR=$SCRATCH/nsec_complex
 export FIGURES_DIR=$SCRATCH/nsec_figures/map_recon_new_loss_sn${opt[$SLURM_ARRAY_TASK_ID]}/
 
 srun python ./nsec/mri/map_reconstruction.py -n 1000000 -b 2 -c CORPD_FBK -is 64 -nps 50 -h -e 0.000001 -sn ${opt[$SLURM_ARRAY_TASK_ID]}

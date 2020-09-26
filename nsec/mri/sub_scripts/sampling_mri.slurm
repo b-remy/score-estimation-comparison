@@ -25,4 +25,4 @@ export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/nsec_no_sn
 export FIGURES_DIR=$SCRATCH/nsec_figures/sampling_no_sn
 
-srun python ./nsec/mri/sampling.py -ns 100000 -m -b 2 -c CORPD_FBK -is 64 -sn 0.
+srun python ./nsec/mri/sampling.py -ns 100000 -m -b 2 -c CORPD_FBK -is 64 -sn 0. --nps-train 50.0

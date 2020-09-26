@@ -12,7 +12,7 @@
 #SBATCH --qos=qos_gpu-t3
 #SBATCH --output=sampling_mri%A_%a.out # nom du fichier de sortie
 #SBATCH --error=sampling_mri%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
-#SBATCH --array=0-1
+#SBATCH --array=0-3
 
 set -x
 cd $WORK/score-estimation-comparison
@@ -22,11 +22,13 @@ module purge
 conda deactivate fastmri-tf-2.1.0
 module load tensorflow-gpu/py3/2.3.0
 
-opt[0]='5.0'
-opt[1]='10.0'
+opt[0]='0.1'
+opt[1]='0.5'
+opt[2]='1.0'
+opt[2]='2.0'
 
 export FASTMRI_DATA_DIR=$SCRATCH/
-export CHECKPOINTS_DIR=$SCRATCH/nsec_complex/
+export CHECKPOINTS_DIR=$SCRATCH/nsec_complex_new_loss/
 export FIGURES_DIR=$SCRATCH/nsec_figures/sampling_new_loss_sn${opt[$SLURM_ARRAY_TASK_ID]}/
 
 srun python ./nsec/mri/sampling.py -ns 100000 --nps-train 50.0 -b 2 -c CORPD_FBK -is 64 -sn ${opt[$SLURM_ARRAY_TASK_ID]}

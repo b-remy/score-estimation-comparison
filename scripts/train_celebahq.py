@@ -1,7 +1,6 @@
 # Script for training a denoiser on Celeb_a_hq
 from absl import app
 from absl import flags
-from absl import loggin
 import haiku as hk
 import jax
 from jax.experimental import optix

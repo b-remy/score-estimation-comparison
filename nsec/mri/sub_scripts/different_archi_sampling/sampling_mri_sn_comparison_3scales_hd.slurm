@@ -13,7 +13,7 @@
 #SBATCH --output=3scales_sampling_mri_hd%A_%a.out # nom du fichier de sortie
 #SBATCH --error=3scales_sampling_mri_hd%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
 #SBATCH --array=0-6
-#SBATCH --dependency=afterok:386777
+#SBATCH --dependency=afterok:386851
 
 set -x
 cd $WORK/score-estimation-comparison
@@ -35,4 +35,4 @@ export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/nsec_3scales/
 export FIGURES_DIR=$SCRATCH/nsec_figures/sampling_3scales_hd_sn${opt[$SLURM_ARRAY_TASK_ID]}/
 
-srun python ./nsec/mri/sampling.py -ns 100000 --nps-train 50.0 -b 2 -c CORPD_FBK -sn ${opt[$SLURM_ARRAY_TASK_ID]} -s 3
+srun python ./nsec/mri/sampling.py -ns 100000 --nps-train 50.0 -b 2 -c CORPD_FBK -sn ${opt[$SLURM_ARRAY_TASK_ID]} -sc 3

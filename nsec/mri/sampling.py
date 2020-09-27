@@ -30,6 +30,8 @@ def sample_from_image_hmc(
         num_burnin_steps=10,
         step_size=1e-1,
         sn_val=2.0,
+        no_final_conv=False,
+        scales=4,
     ):
     val_mri_gen = mri_noisy_generator(
         split='val',
@@ -40,7 +42,14 @@ def sample_from_image_hmc(
         magnitude=magnitude_images,
         image_size=image_size,
     )
-    model, _, _, _, _, _, _, rng_seq = get_model(opt=False, magnitude_images=magnitude_images, pad_crop=False, stride=False)
+    model, _, _, _, _, _, _, rng_seq = get_model(
+        opt=False,
+        magnitude_images=magnitude_images,
+        pad_crop=False,
+        stride=False,
+        no_final_conv=no_final_conv,
+        scales=scales,
+    )
 
     # Importing saved model
     additional_info = get_additional_info(
@@ -51,6 +60,8 @@ def sample_from_image_hmc(
         stride=False,
         image_size=image_size,
         sn_val=sn_val,
+        no_final_conv=no_final_conv,
+        scales=scales,
     )
     model_name = get_model_name(
         noise_power_spec=noise_power_spec_training,
@@ -154,6 +165,8 @@ def sample_from_image_hmc(
 @click.option('num_burnin_steps', '-nb', type=int, default=10)
 @click.option('step_size', '-s', type=float, default=1e-1)
 @click.option('sn_val', '-sn', type=float, default=2.)
+@click.option('no_final_conv', '--no-fcon', is_flag=True)
+@click.option('scales', '-sc', type=int, default=4)
 def sample_from_image_hmc_click(
         batch_size,
         contrast,
@@ -166,6 +179,8 @@ def sample_from_image_hmc_click(
         num_burnin_steps,
         step_size,
         sn_val,
+        no_final_conv,
+        scales,
     ):
     sample_from_image_hmc(
         batch_size=batch_size,
@@ -179,6 +194,8 @@ def sample_from_image_hmc_click(
         num_burnin_steps=num_burnin_steps,
         step_size=step_size,
         sn_val=sn_val,
+        no_final_conv=no_final_conv,
+        scales=scales,
     )
 
 

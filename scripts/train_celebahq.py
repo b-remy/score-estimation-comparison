@@ -29,6 +29,7 @@ flags.DEFINE_integer("training_steps", 45000, "Number of training steps to run."
 flags.DEFINE_float("noise_dist_std", 1., "Standard deviation of the noise distribution.")
 flags.DEFINE_float("spectral_norm", 2., "Standard deviation of the noise distribution.")
 flags.DEFINE_integer("celeba_resolution", 128, "Resolution of celeb dataset, 128 to 1024.")
+flags.DEFINE_string("variant", "EiffL", "Variant of model.")
 
 FLAGS = flags.FLAGS
 
@@ -59,7 +60,7 @@ def load_dataset(resolution, batch_size, noise_dist_std):
   return iter(tfds.as_numpy(ds))
 
 def forward_fn(x, s, is_training=False):
-    denoiser = SmallUResNet(n_output_channels=3)
+    denoiser = SmallUResNet(n_output_channels=3, variant=FLAGS.variant)
     return denoiser(x, s, is_training=is_training)
 
 def lr_schedule(step):
@@ -129,10 +130,10 @@ def main(_):
       print(step, loss)
       # Running denoiser on a batch of images
       batch, res = score_fn(params, state, next(rng_seq), next(train))
-      summary_writer.image('target', batch['x'][0], step)
-      summary_writer.image('input', batch['y'][0], step)
-      summary_writer.image('score', res[0], step)
-      summary_writer.image('denoised', batch['y'][0] + batch['s'][0,:,:,0]**2 * res[0], step)
+      summary_writer.image('score/target', batch['x'][0], step)
+      summary_writer.image('score/input', batch['y'][0], step)
+      summary_writer.image('score/score', res[0], step)
+      summary_writer.image('score/denoised', batch['y'][0] + batch['s'][0,:,:,0]**2 * res[0], step)
 
     if step%5000 ==0:
       with open(FLAGS.output_dir+'/model-%d.pckl'%step, 'wb') as file:

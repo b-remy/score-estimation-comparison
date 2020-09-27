@@ -272,7 +272,7 @@ class UResNet(hk.Module):
     if self.resnet_v2 and self.use_bn:
       self.final_batchnorm = hk.BatchNorm(name="final_batchnorm", **bn_config)
 
-    if variant == "Zacc":
+    if self.variant == "Zacc":
       self.final_up_conv = hk.Conv2D(
           output_channels=channels_per_group[0]*self.n_output_channels//2,
           kernel_shape=5,
@@ -302,7 +302,7 @@ class UResNet(hk.Module):
         out, padding = pad_for_pool(inputs, 4)
     out = jnp.concatenate([out, condition*jnp.ones_like(out)[...,[0]]], axis=-1)
     out = self.initial_conv(out)
-    if variant == "Zacc":
+    if self.variant == "Zacc":
       out = self.pooling(out)
     # Decreasing resolution
     levels = []
@@ -318,7 +318,7 @@ class UResNet(hk.Module):
       out = jnp.concatenate([out, levels[-i-1]],axis=-1)
 
     # Second to last upsampling, merging with input branch
-    if variant == "Zacc":
+    if self.variant == "Zacc":
       out = self.upsampling(out)
       out = self.final_up_conv(out)
       out = self.antepenultian_conv(out)
@@ -365,4 +365,5 @@ class SmallUResNet(UResNet):
                      use_bn=use_bn,
                      pad_crop=pad_crop,
                      n_output_channels=n_output_channels,
+                     variant=variant,
                      name=name)

@@ -7,3 +7,4 @@ tensorflow-probability==0.11.0
 click
 scikit-image
 joblib
+flax

@@ -10,6 +10,9 @@ from jax.experimental import optix
 import jax.numpy as jnp
 import numpy as onp
 import pickle
+from functools import partial
+
+from flax.metrics import tensorboard
 
 # Import tensorflow for dataset creation and manipulation
 import tensorflow.compat.v2 as tf
@@ -22,7 +25,7 @@ from nsec.normalization import SNParamsTree as CustomSNParamsTree
 flags.DEFINE_string("output_dir", ".", "Folder where to store model.")
 flags.DEFINE_integer("batch_size", 64, "Size of the batch to train on.")
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate for the optimizer.")
-flags.DEFINE_integer("training_steps", 5000, "Number of training steps to run.")
+flags.DEFINE_integer("training_steps", 45000, "Number of training steps to run.")
 flags.DEFINE_float("noise_dist_std", 1., "Standard deviation of the noise distribution.")
 flags.DEFINE_float("spectral_norm", 2., "Standard deviation of the noise distribution.")
 flags.DEFINE_integer("celeba_resolution", 128, "Resolution of celeb dataset, 128 to 1024.")
@@ -103,24 +106,40 @@ def main(_):
     new_params, new_sn_state = sn_fn.apply(None, sn_state, None, new_params)
     return loss, new_params, state, new_sn_state, new_opt_state
 
+  @jax.jit
+  def score_fn(params, state, rng_key, batch):
+    res, state = model.apply(params, state, rng_key, batch['y'], batch['s'],
+                             is_training=False)
+    return batch, res
+
   # Load dataset
   train = load_dataset(FLAGS.celeba_resolution, FLAGS.batch_size,
                        FLAGS.noise_dist_std)
 
-  losses = []
+  summary_writer = tensorboard.SummaryWriter(model_dir)
+  # summary_writer.hparams(dict(config))
+
   for step in range(FLAGS.training_steps):
     loss, params, state, sn_state, opt_state = update(params, state, sn_state,
                                                       next(rng_seq), opt_state,
                                                       next(train))
-    losses.append(loss)
+
+    summary_writer.scalar('train_loss', loss, step)
     if step%100==0:
-        print(step, loss)
+      print(step, loss)
+      # Running denoiser on a batch of images
+      batch, res = score_fn(params, state, next(rng_seq), next(train))
+      summary_writer.image('target', batch['x'][0], step)
+      summary_writer.image('input', batch['y'][0], step)
+      summary_writer.image('score', res[0], step)
+      summary_writer.image('denoised', batch['y'][0] + batch['s'][0,:,:,0]**2 * res[0], step)
 
     if step%5000 ==0:
       with open(FLAGS.output_dir+'/model-%d.pckl'%step, 'wb') as file:
         pickle.dump([params, state, sn_state], file)
 
-
+  summary_writer.flush()
+  
   with open(FLAGS.output_dir+'/model-final.pckl', 'wb') as file:
     pickle.dump([params, state, sn_state], file)
 

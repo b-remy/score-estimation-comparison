@@ -8,11 +8,11 @@
 # de Slurm "multithread" fait bien référence à l'hyperthreading.
 #SBATCH --hint=nomultithread         # on réserve des coeurs physiques et non logiques
 #SBATCH --distribution=block:block   # on épingle les tâches sur des coeurs contigus
-#SBATCH --time=80:00:00              # temps d’exécution maximum demande (HH:MM:SS)
-#SBATCH --qos=qos_gpu-t4
+#SBATCH --time=20:00:00              # temps d’exécution maximum demande (HH:MM:SS)
+#SBATCH --qos=qos_gpu-t3
 #SBATCH --output=3scales_train%A_%a.out # nom du fichier de sortie
 #SBATCH --error=3scales_train%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
-#SBATCH --array=0-11
+#SBATCH --array=0-6
 
 set -x
 cd $WORK/score-estimation-comparison
@@ -32,12 +32,5 @@ opt[3]="-is 64 "
 opt[4]="-is 64 -sn 5."
 opt[5]="-is 64 -sn 10."
 opt[6]="-is 64 -sn 0."
-opt[7]="-sn 1."
-opt[8]="-sn 0.5"
-opt[9]="-sn 0.1"
-opt[10]=""
-opt[11]="-sn 5."
-opt[12]="-sn 10."
-opt[13]="-sn 0."
 
 srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]} -n 100000 -c CORPD_FBK -nps 50 -lr 0.0001 -s 3

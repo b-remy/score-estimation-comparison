@@ -397,7 +397,7 @@ class UResNet128(UResNet):
                      bn_config=bn_config,
                      bottleneck=False,
                      channels_per_group=(32, 64, 128, 256, 512, 512),
-                     use_projection=(True, True, True, True),
+                     use_projection=(True, True, True, True, True, True),
                      strides=(1, # 128x128
                               2, # 64x64
                               2, # 32x32

@@ -11,7 +11,7 @@ from nsec.models.dae.convdae_nostride import SmallUResNet as SmallUResNetNoStrid
 from nsec.normalization import SNParamsTree as CustomSNParamsTree
 
 
-def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2., stride=True):
+def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2., stride=True, no_final_conv=False, scales=4):
     def forward(x, s, is_training=False):
         if magnitude_images:
             n_out = 1
@@ -19,9 +19,11 @@ def get_model(opt=True, lr=1e-3, magnitude_images=False, pad_crop=True, sn_val=2
             n_out = 2
         if stride:
             denoiser_cls = SmallUResNet
+            add_kwargs = {}
         else:
             denoiser_cls = SmallUResNetNoStride
-        denoiser = denoiser_cls(use_bn=True, n_output_channels=n_out, pad_crop=pad_crop)
+            add_kwargs = dict(no_final_conv=no_final_conv, scales=scales)
+        denoiser = denoiser_cls(use_bn=True, n_output_channels=n_out, pad_crop=pad_crop, **add_kwargs)
         if not magnitude_images:
             x = jnp.concatenate([x.real, x.imag], axis=-1)
         denoised_float = denoiser(x, s, is_training=is_training)
@@ -96,6 +98,8 @@ def get_additional_info(
         lr=1e-3,
         stride=True,
         image_size=320,
+        no_final_conv=False,
+        scales=4,
     ):
     additional_info = ""
     if contrast is not None:
@@ -112,6 +116,10 @@ def get_additional_info(
         additional_info += '_no_stride'
     if image_size != 320:
         additional_info += f'_is{image_size}'
+    if no_final_conv:
+        additional_info += '_no_fconv'
+    if scales != 4:
+        additional_info += f'_scales{scales}'
     return additional_info
 
 def get_model_name(noise_power_spec=30., additional_info=''):

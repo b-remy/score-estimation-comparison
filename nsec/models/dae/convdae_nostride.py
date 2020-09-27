@@ -187,7 +187,9 @@ class UResNet(hk.Module):
                n_output_channels=1,
                use_bn=True,
                pad_crop=False,
-               name=None):
+               name=None,
+               no_final_conv=False,
+               scales=4):
     """Constructs a Residual UNet model based on a traditional ResNet.
     Args:
       blocks_per_group: A sequence of length 4 that indicates the number of
@@ -216,6 +218,8 @@ class UResNet(hk.Module):
     self.use_bn = use_bn
     self.pad_crop = pad_crop
     self.n_output_channels = n_output_channels
+    self.no_final_conv = no_final_conv
+    self.scales = scales
     bn_config = dict(bn_config or {})
     bn_config.setdefault("decay_rate", 0.9)
     bn_config.setdefault("eps", 1e-5)
@@ -270,20 +274,21 @@ class UResNet(hk.Module):
     if self.resnet_v2 and self.use_bn:
       self.final_batchnorm = hk.BatchNorm(name="final_batchnorm", **bn_config)
 
-    self.final_up_conv = hk.Conv2D(
-        output_channels=channels_per_group[0]*self.n_output_channels//2,
-        kernel_shape=5,
-        stride=1,
-        padding="SAME",
-        name="final_up_conv",
-    )
-    self.antepenultian_conv = hk.Conv2D(
-        output_channels=channels_per_group[0]*self.n_output_channels//2,
-        kernel_shape=3,
-        stride=1,
-        padding='SAME',
-        name='antepenultian_conv',
-    )
+    if not self.no_final_conv:
+        self.final_up_conv = hk.Conv2D(
+            output_channels=channels_per_group[0]*self.n_output_channels//2,
+            kernel_shape=5,
+            stride=1,
+            padding="SAME",
+            name="final_up_conv",
+        )
+        self.antepenultian_conv = hk.Conv2D(
+            output_channels=channels_per_group[0]*self.n_output_channels//2,
+            kernel_shape=3,
+            stride=1,
+            padding='SAME',
+            name='antepenultian_conv',
+        )
     self.final_conv = hk.Conv2D(
         output_channels=self.n_output_channels,
         kernel_shape=3,
@@ -299,7 +304,8 @@ class UResNet(hk.Module):
         out, padding = pad_for_pool(inputs, 4)
     out = jnp.concatenate([out, condition*jnp.ones_like(out)[...,[0]]], axis=-1)
     out = self.initial_conv(out)
-    out = self.pooling(out)
+    if self.scales == 4:
+        out = self.pooling(out)
     # Decreasing resolution
     levels = []
     for block_group in self.block_groups:
@@ -314,10 +320,12 @@ class UResNet(hk.Module):
       out = jnp.concatenate([out, levels[-i-1]],axis=-1)
 
     # Second to last upsampling, merging with input branch
-    out = self.upsampling(out)
-    out = self.final_up_conv(out)
-    out = self.antepenultian_conv(out)
-    out = jax.nn.relu(out)
+    if self.scales == 4:
+        out = self.upsampling(out)
+        out = self.final_up_conv(out)
+    if not self.no_final_conv:
+        out = self.antepenultian_conv(out)
+        out = jax.nn.relu(out)
     out = self.final_conv(out)
     if self.pad_crop:
         condition_normalisation = (jnp.abs(condition)*jnp.ones_like(pad_for_pool(inputs, 4)[0])+1e-3)
@@ -337,7 +345,9 @@ class SmallUResNet(UResNet):
                use_bn: bool = True,
                pad_crop: bool = False,
                n_output_channels: int = 1,
-               name: Optional[str] = None):
+               name: Optional[str] = None,
+               no_final_conv: Optional[bool] = False,
+               scales: Optional[int] = 4):
     """Constructs a ResNet model.
     Args:
       bn_config: A dictionary of two elements, ``decay_rate`` and ``eps`` to be
@@ -358,4 +368,6 @@ class SmallUResNet(UResNet):
                      use_bn=use_bn,
                      pad_crop=pad_crop,
                      n_output_channels=n_output_channels,
-                     name=name)
+                     name=name,
+                     no_final_conv=False,
+                     scales=4)

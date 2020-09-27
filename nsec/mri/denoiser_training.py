@@ -25,6 +25,8 @@ def train_denoiser_score_matching(
         sn_val=2.,
         stride=True,
         image_size=320,
+        no_final_conv=False,
+        scales=4,
     ):
     train_mri_gen = mri_noisy_generator(
         split='train',
@@ -45,6 +47,8 @@ def train_denoiser_score_matching(
         magnitude_images=magnitude_images,
         sn_val=sn_val,
         stride=stride,
+        no_final_conv=no_final_conv,
+        scales=scales,
     )
 
     losses = []
@@ -57,6 +61,8 @@ def train_denoiser_score_matching(
         lr=lr,
         stride=stride,
         image_size=image_size,
+        no_final_conv=no_final_conv,
+        scales=scales,
     )
     model_name = get_model_name(
         noise_power_spec=noise_power_spec,
@@ -91,6 +97,8 @@ def train_denoiser_score_matching(
 @click.option('pad_crop', '-pc', is_flag=True)
 @click.option('stride', '-st', is_flag=True)
 @click.option('image_size', '-is', type=int, default=320)
+@click.option('no_final_conv', '--no-fcon', is_flag=True)
+@click.option('scales', '-s', type=int, default=4)
 def train_denoiser_score_matching_click(
         batch_size,
         n_steps,
@@ -102,6 +110,8 @@ def train_denoiser_score_matching_click(
         sn_val,
         stride,
         image_size,
+        no_final_conv,
+        scales,
     ):
     train_denoiser_score_matching(
         batch_size=batch_size,
@@ -114,6 +124,8 @@ def train_denoiser_score_matching_click(
         sn_val=sn_val,
         stride=stride,
         image_size=image_size,
+        no_final_conv=no_final_conv,
+        scales=scales,
     )
 
 

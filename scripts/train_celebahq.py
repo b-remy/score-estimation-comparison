@@ -116,7 +116,7 @@ def main(_):
   train = load_dataset(FLAGS.celeba_resolution, FLAGS.batch_size,
                        FLAGS.noise_dist_std)
 
-  summary_writer = tensorboard.SummaryWriter(model_dir)
+  summary_writer = tensorboard.SummaryWriter(FLAGS.output_dir)
   # summary_writer.hparams(dict(config))
 
   for step in range(FLAGS.training_steps):
@@ -139,7 +139,7 @@ def main(_):
         pickle.dump([params, state, sn_state], file)
 
   summary_writer.flush()
-  
+
   with open(FLAGS.output_dir+'/model-final.pckl', 'wb') as file:
     pickle.dump([params, state, sn_state], file)
 

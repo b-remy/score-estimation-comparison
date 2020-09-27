@@ -184,6 +184,7 @@ class UResNet(hk.Module):
                bottleneck,
                channels_per_group,
                use_projection,
+               strides,
                n_output_channels=1,
                use_bn=True,
                pad_crop=False,
@@ -223,10 +224,12 @@ class UResNet(hk.Module):
     bn_config.setdefault("create_scale", True)
     bn_config.setdefault("create_offset", True)
     self.variant = variant
+    self.strides = strides
+    bl = len(self.strides)
 
     # Number of blocks in each group for ResNet.
-    check_length(4, blocks_per_group, "blocks_per_group")
-    check_length(4, channels_per_group, "channels_per_group")
+    check_length(bl, blocks_per_group, "blocks_per_group")
+    check_length(bl, channels_per_group, "channels_per_group")
     self.upsampling = upsample
     self.pooling = hk.AvgPool(window_shape=2, strides=2, padding='SAME')
 
@@ -244,8 +247,7 @@ class UResNet(hk.Module):
 
     self.block_groups = []
     self.up_block_groups = []
-    strides = (1, 2, 2, 2)
-    for i in range(4):
+    for i in range(bl):
       self.block_groups.append(
           BlockGroup(channels=channels_per_group[i],
                      num_blocks=blocks_per_group[i],
@@ -257,7 +259,7 @@ class UResNet(hk.Module):
                      use_bn=self.use_bn,
                      name="block_group_%d" % (i)))
 
-    for i in range(4):
+    for i in range(bl):
       self.up_block_groups.append(
           BlockGroup(channels=channels_per_group[i],
                      num_blocks=blocks_per_group[i],
@@ -362,6 +364,46 @@ class SmallUResNet(UResNet):
                      bottleneck=False,
                      channels_per_group=(32, 64, 128, 128),
                      use_projection=(True, True, True, True),
+                     strides=(1, 2, 2, 2),
+                     use_bn=use_bn,
+                     pad_crop=pad_crop,
+                     n_output_channels=n_output_channels,
+                     variant=variant,
+                     name=name)
+
+class UResNet128(UResNet):
+  """UResNet adapted to images of size 128x128."""
+
+  def __init__(self,
+               bn_config: Optional[Mapping[str, float]] = None,
+               use_bn: bool = True,
+               pad_crop: bool = False,
+               n_output_channels: int = 1,
+               variant: Optional[str] = 'EiffL',
+               name: Optional[str] = None):
+    """Constructs a ResNet model.
+    Args:
+      bn_config: A dictionary of two elements, ``decay_rate`` and ``eps`` to be
+        passed on to the :class:`~haiku.BatchNorm` layers.
+      resnet_v2: Whether to use the v1 or v2 ResNet implementation. Defaults
+        to ``False``.
+      use_bn: Whether the network should use batch normalisation. Defaults to
+        ``True``.
+      n_output_channels: The number of output channels, for example to change in
+        the case of a complex denoising. Defaults to 1.
+      name: Name of the module.
+    """
+    super().__init__(blocks_per_group=(2, 2, 2, 2, 2, 2),
+                     bn_config=bn_config,
+                     bottleneck=False,
+                     channels_per_group=(32, 64, 128, 256, 512, 512),
+                     use_projection=(True, True, True, True),
+                     strides=(1, # 128x128
+                              2, # 64x64
+                              2, # 32x32
+                              2, # 16x16
+                              2, # 8x8
+                              2),# 4x4
                      use_bn=use_bn,
                      pad_crop=pad_crop,
                      n_output_channels=n_output_channels,

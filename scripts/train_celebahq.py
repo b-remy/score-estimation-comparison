@@ -19,7 +19,7 @@ import tensorflow.compat.v2 as tf
 tf.enable_v2_behavior()
 import tensorflow_datasets as tfds
 
-from nsec.models.dae.convdae_nostride import SmallUResNet
+from nsec.models.dae.convdae_nostride import SmallUResNet, UResNet128
 from nsec.normalization import SNParamsTree as CustomSNParamsTree
 
 flags.DEFINE_string("output_dir", ".", "Folder where to store model.")
@@ -30,6 +30,7 @@ flags.DEFINE_float("noise_dist_std", 1., "Standard deviation of the noise distri
 flags.DEFINE_float("spectral_norm", 2., "Standard deviation of the noise distribution.")
 flags.DEFINE_integer("celeba_resolution", 128, "Resolution of celeb dataset, 128 to 1024.")
 flags.DEFINE_string("variant", "EiffL", "Variant of model.")
+flags.DEFINE_string("model", "SmallUResNet", "Name of model.")
 
 FLAGS = flags.FLAGS
 
@@ -60,8 +61,13 @@ def load_dataset(resolution, batch_size, noise_dist_std):
   return iter(tfds.as_numpy(ds))
 
 def forward_fn(x, s, is_training=False):
+  if FLAGS.model == 'SmallUResNet':
     denoiser = SmallUResNet(n_output_channels=3, variant=FLAGS.variant)
-    return denoiser(x, s, is_training=is_training)
+  elif FLAGS.model == 'UResNet128':
+    denoiser = UResNet128(n_output_channels=3, variant=FLAGS.variant)
+  else:
+    raise NotImplementedError
+  return denoiser(x, s, is_training=is_training)
 
 def lr_schedule(step):
   """Linear scaling rule optimized for 90 epochs."""
@@ -78,7 +84,9 @@ def lr_schedule(step):
 def main(_):
   # Make the network
   model = hk.transform_with_state(forward_fn)
-  sn_fn = hk.transform_with_state(lambda x: CustomSNParamsTree(ignore_regex='[^?!.]*b$',
+
+  if FLAGS.spectral_norm > 0:
+    sn_fn = hk.transform_with_state(lambda x: CustomSNParamsTree(ignore_regex='[^?!.]*b$',
                                                               val=FLAGS.spectral_norm)(x))
 
   # Initialisation
@@ -91,7 +99,10 @@ def main(_):
                              jnp.zeros((1, FLAGS.celeba_resolution, FLAGS.celeba_resolution, 3)),
                              jnp.zeros((1, 1, 1, 1)), is_training=True)
   opt_state = optimizer.init(params)
-  _, sn_state = sn_fn.init(next(rng_seq), params)
+  if FLAGS.spectral_norm > 0:
+    _, sn_state = sn_fn.init(next(rng_seq), params)
+  else:
+    sn_state = 0.
 
   # Training loss
   def loss_fn(params, state, rng_key, batch):
@@ -104,7 +115,10 @@ def main(_):
     (loss, state), grads = jax.value_and_grad(loss_fn, has_aux=True)(params, state, rng_key, batch)
     updates, new_opt_state = optimizer.update(grads, opt_state)
     new_params = optix.apply_updates(params, updates)
-    new_params, new_sn_state = sn_fn.apply(None, sn_state, None, new_params)
+    if FLAGS.spectral_norm > 0:
+      new_params, new_sn_state = sn_fn.apply(None, sn_state, None, new_params)
+    else:
+      new_sn_state = sn_state
     return loss, new_params, state, new_sn_state, new_opt_state
 
   @jax.jit
@@ -118,7 +132,6 @@ def main(_):
                        FLAGS.noise_dist_std)
 
   summary_writer = tensorboard.SummaryWriter(FLAGS.output_dir)
-  # summary_writer.hparams(dict(config))
 
   for step in range(FLAGS.training_steps):
     loss, params, state, sn_state, opt_state = update(params, state, sn_state,

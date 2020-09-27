@@ -13,7 +13,7 @@
 #SBATCH --output=nofc_3scales_sampling_mri%A_%a.out # nom du fichier de sortie
 #SBATCH --error=nofc_3scales_sampling_mri%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
 #SBATCH --array=0-6
-#SBATCH --dependency=afterok:387574
+#SBATCH --dependency=afterok:387635
 
 set -x
 cd $WORK/score-estimation-comparison

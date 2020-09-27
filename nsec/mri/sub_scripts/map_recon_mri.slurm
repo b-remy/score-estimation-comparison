@@ -13,6 +13,7 @@
 #SBATCH --output=recon_map_mri%A_%a.out # nom du fichier de sortie
 #SBATCH --error=recon_map_mri%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
 #SBATCH --array=0-5
+#SBATCH --dependency=afterok:379904
 
 set -x
 cd $WORK/score-estimation-comparison

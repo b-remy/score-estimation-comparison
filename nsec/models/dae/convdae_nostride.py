@@ -369,5 +369,5 @@ class SmallUResNet(UResNet):
                      pad_crop=pad_crop,
                      n_output_channels=n_output_channels,
                      name=name,
-                     no_final_conv=False,
-                     scales=4)
+                     no_final_conv=no_final_conv,
+                     scales=scales)

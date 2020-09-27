@@ -322,8 +322,8 @@ class UResNet(hk.Module):
     # Second to last upsampling, merging with input branch
     if self.scales == 4:
         out = self.upsampling(out)
-        out = self.final_up_conv(out)
     if not self.no_final_conv:
+        out = self.final_up_conv(out)
         out = self.antepenultian_conv(out)
         out = jax.nn.relu(out)
     out = self.final_conv(out)

@@ -32,6 +32,8 @@ def reconstruct_image_map(
         hard_data_consistency=True,
         soft_dc_lambda=1.,
         sn_val=2.0,
+        no_final_conv=False,
+        scales=4,
     ):
     val_mri_gen = mri_recon_generator(
         split='val',
@@ -42,7 +44,14 @@ def reconstruct_image_map(
         image_size=image_size,
     )
 
-    model, _, _, _, _, _, _, rng_seq = get_model(opt=False, magnitude_images=False, pad_crop=False, stride=False)
+    model, _, _, _, _, _, _, rng_seq = get_model(
+        opt=False,
+        magnitude_images=False,
+        pad_crop=False,
+        stride=False,
+        no_final_conv=no_final_conv,
+        scales=scales,
+    )
 
     # Importing saved model
     additional_info = get_additional_info(
@@ -53,6 +62,8 @@ def reconstruct_image_map(
         lr=1e-4,
         stride=False,
         image_size=image_size,
+        no_final_conv=no_final_conv,
+        scales=scales,
     )
     model_name = get_model_name(
         noise_power_spec=noise_power_spec_training,
@@ -132,6 +143,8 @@ def reconstruct_image_map(
 @click.option('hard_data_consistency', '-h', is_flag=True)
 @click.option('soft_dc_lambda', '-l', type=float, default=1.)
 @click.option('sn_val', '-sn', type=float, default=2.)
+@click.option('no_final_conv', '--no-fcon', is_flag=True)
+@click.option('scales', '-sc', type=int, default=4)
 def reconstruct_image_map_click(
         batch_size,
         contrast,
@@ -144,6 +157,8 @@ def reconstruct_image_map_click(
         hard_data_consistency,
         soft_dc_lambda,
         sn_val,
+        no_final_conv,
+        scales,
     ):
     reconstruct_image_map(
         batch_size=batch_size,
@@ -157,6 +172,8 @@ def reconstruct_image_map_click(
         hard_data_consistency=hard_data_consistency,
         soft_dc_lambda=soft_dc_lambda,
         sn_val=sn_val,
+        no_final_conv=no_final_conv,
+        scales=scales,
     )
 
 

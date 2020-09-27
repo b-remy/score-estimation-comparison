@@ -106,7 +106,7 @@ def sample_from_image_hmc(
               num_results=num_results,
               num_burnin_steps=num_burnin_steps,
               current_state=x_float.reshape((jnp.prod(x_float.shape),)),
-              num_steps_between_results=100,
+              num_steps_between_results=num_results//1000,
               kernel=kernel_shmc,
               trace_fn=lambda _, pkr: pkr.is_accepted,
               seed=jax.random.PRNGKey(1),

@@ -31,6 +31,9 @@ def reconstruct_image_annealed_langevin(
         hard_data_consistency=True,
         soft_dc_lambda=1.,
         n_repetitions=10,
+        sn_val=2.,
+        no_final_conv=False,
+        scales=4,
     ):
     val_mri_gen = mri_recon_generator(
         split='val',
@@ -41,17 +44,27 @@ def reconstruct_image_annealed_langevin(
         image_size=image_size,
     )
 
-    model, _, _, _, _, _, _, rng_seq = get_model(opt=False, magnitude_images=False, pad_crop=False, stride=False)
+    model, _, _, _, _, _, _, rng_seq = get_model(
+        opt=False,
+        magnitude_images=False,
+        pad_crop=False,
+        stride=False,
+        no_final_conv=no_final_conv,
+        scales=scales,
+    )
 
     # Importing saved model
     additional_info = get_additional_info(
         contrast=contrast,
         pad_crop=False,
         magnitude_images=False,
-        sn_val=2.,
+        sn_val=sn_val,
         lr=1e-4,
         stride=False,
         image_size=image_size,
+        no_final_conv=no_final_conv,
+        scales=scales,
+
     )
     model_name = get_model_name(
         noise_power_spec=noise_power_spec_training,
@@ -160,6 +173,9 @@ def reconstruct_image_annealed_langevin(
 @click.option('sigma_start', '-ss', type=float, default=2.)
 @click.option('sigma_end', '-se', type=float, default=-1.)
 @click.option('n_repetitions', '-nr', type=int, default=10)
+@click.option('sn_val', '-sn', type=float, default=2.)
+@click.option('no_final_conv', '--no-fcon', is_flag=True)
+@click.option('scales', '-sc', type=int, default=4)
 def reconstruct_image_annealed_langevin_click(
         batch_size,
         contrast,
@@ -173,6 +189,9 @@ def reconstruct_image_annealed_langevin_click(
         sigma_start,
         sigma_end,
         n_repetitions,
+        sn_val,
+        no_final_conv,
+        scales,
     ):
     reconstruct_image_annealed_langevin(
         sigmas=np.logspace(sigma_start, sigma_end, 10),
@@ -186,6 +205,9 @@ def reconstruct_image_annealed_langevin_click(
         hard_data_consistency=hard_data_consistency,
         soft_dc_lambda=soft_dc_lambda,
         n_repetitions=n_repetitions,
+        sn_val=sn_val,
+        no_final_conv=no_final_conv,
+        scales=scales,
     )
 
 

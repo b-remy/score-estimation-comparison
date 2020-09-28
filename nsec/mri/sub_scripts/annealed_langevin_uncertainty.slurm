@@ -25,4 +25,4 @@ export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/nsec_3scales
 export FIGURES_DIR=$SCRATCH/nsec_figures/annealed_langevin_sn5_3scales
 
-srun python ./nsec/mri/annealed_langevin_reconstruction.py -n 100 -b 1 -c CORPD_FBK -sn 5. -is 64 -nps 50. -sn 5. -sc 3 -h -nr 2
+srun python ./nsec/mri/annealed_langevin_reconstruction.py -n 30000 -b 2 -c CORPD_FBK -sn 5. -is 64 -nps 50. -sn 5. -sc 3 -h -nr 10

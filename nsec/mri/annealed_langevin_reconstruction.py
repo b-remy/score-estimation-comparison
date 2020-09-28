@@ -92,7 +92,7 @@ def reconstruct_image_annealed_langevin(
                 alpha = eps * (sigma/sigmas[-1])**2
                 z = jax.random.normal(jax.random.PRNGKey(i), shape=x_old.shape)
                 z = z + 1j * jax.random.normal(jax.random.PRNGKey(i), shape=x_old.shape)
-                x_zfilled_noisy = x_zfilled + z
+                x_zfilled_noisy = x_zfilled + sigma * z
                 kspace_noisy = fourier_pure.op(x_zfilled_noisy[0, ..., 0])
                 @jax.jit
                 def update(t, x_old):

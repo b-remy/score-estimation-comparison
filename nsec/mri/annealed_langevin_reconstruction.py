@@ -18,6 +18,7 @@ from nsec.mri.model import get_model, get_additional_info, get_model_name
 
 checkpoints_dir = Path(os.environ['CHECKPOINTS_DIR'])
 figures_dir = Path(os.environ['FIGURES_DIR'])
+figures_dir.mkdir(exist_ok=True)
 
 def reconstruct_image_annealed_langevin(
         sigmas=np.logspace(2, -1, 10),
@@ -86,11 +87,13 @@ def reconstruct_image_annealed_langevin(
         for j in range(n_repetitions):
             intermediate_images = []
             x_old = np.random.normal(scale=sigmas[0], size=x_zfilled.shape)
+            x_old = x_old + 1j * np.random.normal(scale=sigmas[0], size=x_zfilled.shape)
             for i, sigma in enumerate(sigmas):
                 alpha = eps * (sigma/sigmas[-1])**2
                 z = jax.random.normal(jax.random.PRNGKey(i), shape=x_old.shape)
+                z = z + 1j * jax.random.normal(jax.random.PRNGKey(i), shape=x_old.shape)
                 x_zfilled_noisy = x_zfilled + z
-                kspace_noisy = fourier_pure.op(x_zfilled_noisy)
+                kspace_noisy = fourier_pure.op(x_zfilled_noisy[0, ..., 0])
                 @jax.jit
                 def update(t, x_old):
                     z_t = jax.random.normal(jax.random.PRNGKey(t), shape=x_old.shape)
@@ -138,8 +141,8 @@ def reconstruct_image_annealed_langevin(
             fig.suptitle(f'Beginning PSNR: {beginning_psnr}, End PSNR: {end_psnr}')
             plt.savefig(figures_dir / f'mri_recon_{ind}_{j}.png')
             final_samples.append(jnp.abs(x_new))
-        mean_samples = jnp.mean(final_samples, axis=0)
-        std_samples = jnp.std(final_samples, axis=0)
+        mean_samples = np.mean(final_samples, axis=0)
+        std_samples = np.std(final_samples, axis=0)
         fig, axs = plt.subplots(1, 4, sharex=True, sharey=True, figsize=(8, 8), gridspec_kw={'wspace': 0, 'hspace': 0})
         axs[0].imshow(target_image, vmin=0, vmax=150)
         axs[0].axis('off')

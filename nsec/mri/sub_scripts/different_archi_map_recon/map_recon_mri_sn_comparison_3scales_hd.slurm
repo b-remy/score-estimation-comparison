@@ -35,4 +35,4 @@ export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/nsec_3scales/
 export FIGURES_DIR=$SCRATCH/nsec_figures/map_recon_3scales_hd_sn${opt[$SLURM_ARRAY_TASK_ID]}/
 
-srun python ./nsec/mri/map_reconstruction.py -n 1000000 -nps 50.0 -b 2 -c CORPD_FBK -h -e 0.000001 -sn ${opt[$SLURM_ARRAY_TASK_ID]} -sc 3
+srun python ./nsec/mri/map_reconstruction.py -n 1000000 -nps 50.0 -b 2 -c CORPD_FBK -h -e 0.0000001 -sn ${opt[$SLURM_ARRAY_TASK_ID]} -sc 3

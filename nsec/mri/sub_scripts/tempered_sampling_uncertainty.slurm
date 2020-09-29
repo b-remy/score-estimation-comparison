@@ -30,4 +30,4 @@ export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/nsec_nofc_3scales
 export FIGURES_DIR=$SCRATCH/nsec_figures/tempered_sampling_nofc_3scales_sn${opt[$SLURM_ARRAY_TASK_ID]}
 
-srun python ./nsec/mri/tempered_sampling_reconstruction.py -n 10000 -b 2 -c CORPD_FBK -sn ${opt[$SLURM_ARRAY_TASK_ID]} -nps 50 --no-fcon -sc 3 -nr 10 -e 10 -dcs 0.1 -si 100
+srun python ./nsec/mri/tempered_sampling_reconstruction.py -n 10000 -b 2 -c CORPD_FBK -sn ${opt[$SLURM_ARRAY_TASK_ID]} -nps 50 --no-fcon -sc 3 -nr 10 -e 15 -dcs 0.1 -si 100

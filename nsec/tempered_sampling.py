@@ -292,7 +292,7 @@ class TemperedMC(kernel_base.TransitionKernel):
       )
 
       # Only propose tempering if the chain was going to accept this point anyway
-      is_tempering_accepted_mask = tf.math.logical_and(is_tempering_accepted_mask,
+      is_tempering_accepted_mask = tf.math.logical_and(is_min_steps_satisfied, #is_tempering_accepted_mask,
                                                        pre_tempering_results.is_accepted)
 
       is_tempering_accepted_mask = tf.math.logical_and(is_tempering_accepted_mask,

@@ -90,7 +90,7 @@ def reconstruct_image_tempered_sampling(
                 """ This is a likelihood function for masked and noisy data
                 """
                 current_measurements = fourier_obj.op(x_[..., 0] + 1j * x_[..., 1])
-                likelihood = (jnp.linalg.norm(kspace[ind, ..., 0] - current_measurements) / (soft_dc_sigma+sigma))**2 /2.
+                likelihood = (jnp.linalg.norm(kspace[ind, ..., 0] - current_measurements)**2 / (soft_dc_sigma**2+sigma**2)) /2.
                 likelihood = jnp.squeeze(likelihood)
                 return likelihood
             score_likelihood = jax.vmap(jax.grad(likelihood_fn))

@@ -8,9 +8,11 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
-from skimage.metrics import peak_signal_noise_ratio as psnr
+# from skimage.metrics import peak_signal_noise_ratio as psnr
 import tensorflow_probability as tfp; tfp = tfp.experimental.substrates.jax
+import tensorflow as tf
 
+from fastmri_recon.models.subclassed_models.updnet import UPDNet
 from nsec.datasets.fastmri import mri_recon_generator
 from nsec.mri.fourier import FFT2
 from nsec.mri.model import get_model, get_additional_info, get_model_name
@@ -21,6 +23,8 @@ from nsec.tempered_sampling import TemperedMC
 checkpoints_dir = Path(os.environ['CHECKPOINTS_DIR'])
 figures_dir = Path(os.environ['FIGURES_DIR'])
 figures_dir.mkdir(exist_ok=True)
+chains_dir = figures_dir / 'chains'
+chains_dir.mkdir(exist_ok=True)
 
 def reconstruct_image_tempered_sampling(
         initial_sigma=50.,
@@ -29,13 +33,15 @@ def reconstruct_image_tempered_sampling(
         acceleration_factor=4,
         noise_power_spec_training=30.,
         image_size=320,
-        num_results=50_000,
-        eps=1e-5,
+        num_results=2500,
+        eps=10,
         soft_dc_sigma=0.01,
-        n_repetitions=10,
+        n_repetitions=7,
         sn_val=2.,
         no_final_conv=False,
         scales=4,
+        gamma=0.995,
+        min_steps_per_temp=2,
     ):
     val_mri_gen = mri_recon_generator(
         split='val',
@@ -80,6 +86,34 @@ def reconstruct_image_tempered_sampling(
 
     (kspace, mask), image_gt = next(val_mri_gen)
 
+    #### NN recon zone
+    ### with, for now, hardcoded arguments
+    run_id = 'updnet_singlecoil__af4_compound_mssim_1599653590'
+    n_epochs = 200
+    model = UPDNet(
+        n_primal=5,
+        n_dual=1,
+        primal_only=True,
+        multicoil=False,
+        n_layers=3,
+        layers_n_channels=[16 * 2**i for i in range(3)],
+        non_linearity='relu',
+        n_iter=10,
+        channel_attention_kwargs=None,
+        refine_smaps=False,
+        output_shape_spec=False,
+    )
+    kspace_size = [1, 640, 372]
+    inputs = [
+        tf.zeros(kspace_size + [1], dtype=tf.complex64),
+        tf.zeros(kspace_size, dtype=tf.complex64),
+    ]
+    model(inputs)
+    model.load_weights(checkpoints_dir / '..' / 'checkpoints' / f'{run_id}-{n_epochs:02d}.hdf5')
+
+    recon_nn = model.predict((kspace.astype(np.complex64), mask))
+    #### End of NN recon zone
+
     for ind in range(batch_size):
         fourier_obj = FFT2(mask[ind])
         x_zfilled = fourier_obj.adj_op(kspace[ind, ..., 0])[None, ..., None]
@@ -113,7 +147,7 @@ def reconstruct_image_tempered_sampling(
               return ScoreHamiltonianMonteCarlo(
                   target_log_prob_fn=target_log_prob_fn,
                   target_score_fn=target_score_fn,
-                  step_size=eps*(sigma/initial_sigma)**0.5,
+                  step_size=eps*(sigma/initial_sigma)**1.5,
                   num_leapfrog_steps=3,
                   num_delta_logp_steps=4)
 
@@ -121,8 +155,8 @@ def reconstruct_image_tempered_sampling(
                         target_score_fn=score_fn,
                         inverse_temperatures=initial_sigma*np.ones([1]),
                         make_kernel_fn=make_kernel_fn,
-                        gamma=0.98,
-                        min_steps_per_temp=10,
+                        gamma=gamma,
+                        min_steps_per_temp=min_steps_per_temp,
                         num_delta_logp_steps=4)
 
             num_burnin_steps = int(1e1)
@@ -138,56 +172,39 @@ def reconstruct_image_tempered_sampling(
                                              pkr.tempering_log_accept_ratio),
                     seed=jax.random.PRNGKey(j))
             ##### END OF SAMPLING ZONE
-            fig, axs = plt.subplots(2, 6, sharex=True, sharey=True, figsize=(9, 3), gridspec_kw={'wspace': 0, 'hspace': 0})
-            target_image = jnp.squeeze(jnp.abs(image_gt[ind]))
-            axs[0, 0].imshow(target_image, vmin=0, vmax=150)
-            axs[0, 0].axis('off')
-            axs[0, 1].imshow(jnp.squeeze(jnp.abs(x_zfilled[0])), vmin=0, vmax=150)
-            axs[0, 1].axis('off')
+            # We need to generate the sampling chain image
+            fig, axs = plt.subplots(1, 10, sharex=True, sharey=True, figsize=(10, 2), gridspec_kw={'wspace': 0, 'hspace': 0})
             for i in range(10):
                 im = samples[i].reshape((image_size, image_size, 2))
                 im_not_normed = im
                 im = jnp.linalg.norm(im, axis=-1)
                 im = jnp.squeeze(im)
-                if i < 4:
-                    ax = axs[0, i+2]
-                else:
-                    ax = axs[1, i - 4]
-                ax.imshow(im, vmin=0, vmax=150)
+                ax = axs[i]
+                ax.imshow(im, vmin=0, vmax=200)
                 ax.axis('off')
             plt.tight_layout()
-            beginning_psnr = psnr(
-                target_image,
-                jnp.squeeze(jnp.abs(x_zfilled[0])),
-                data_range=jnp.max(target_image) - jnp.min(target_image),
-            )
-            end_psnr = psnr(
-                target_image,
-                im,
-                data_range=jnp.max(target_image) - jnp.min(target_image),
-            )
-            fig.suptitle(f'Beginning PSNR: {beginning_psnr}, End PSNR: {end_psnr}')
-            plt.savefig(figures_dir / f'mri_recon_{ind}_{j}.png')
+            plt.savefig(chains_dir / f'reconstruction_chain_{ind}_{j}.png')
             final_samples.append(im_not_normed)
-        mean_samples = np.mean(final_samples, axis=0)
-        std_samples = np.std(final_samples, axis=0)
-        fig, axs = plt.subplots(1, 4, sharex=True, sharey=True, figsize=(8, 8), gridspec_kw={'wspace': 0, 'hspace': 0})
-        axs[0].imshow(target_image, vmin=0, vmax=150)
-        axs[0].axis('off')
-        axs[1].imshow(jnp.squeeze(jnp.abs(x_zfilled[0])), vmin=0, vmax=150)
-        axs[1].axis('off')
-        axs[2].imshow(jnp.squeeze(jnp.linalg.norm(mean_samples, axis=-1)), vmin=0, vmax=150)
-        axs[2].axis('off')
-        axs[3].imshow(jnp.squeeze(jnp.linalg.norm(std_samples, axis=-1)))
-        axs[3].axis('off')
+        target_image = jnp.squeeze(jnp.abs(image_gt[ind]))
+        fig, axs = plt.subplots(2, 5, sharex=True, sharey=True, figsize=(10, 5), gridspec_kw={'wspace': 0, 'hspace': 0})
+        axs[0, 0].imshow(target_image, vmin=0, vmax=200)
+        axs[0, 0].axis('off')
+        axs[0, 1].imshow(jnp.squeeze(jnp.abs(x_zfilled[0])), vmin=0, vmax=200)
+        axs[0, 1].axis('off')
+        axs[0, 2].imshow(np.squeeze(recon_nn[ind]), vmin=0, vmax=200)
+        axs[0, 2].axis('off')
+        for i in range(n_repetitions):
+            im = final_samples[i]
+            im = jnp.linalg.norm(im, axis=-1)
+            im = jnp.squeeze(im)
+            if i < 2:
+                ax = axs[0, i+3]
+            else:
+                ax = axs[1, i - 2]
+            ax.imshow(im, vmin=0, vmax=200)
+            ax.axis('off')
         plt.tight_layout()
-        end_psnr = psnr(
-            target_image,
-            jnp.squeeze(mean_samples),
-            data_range=jnp.max(target_image) - jnp.min(target_image),
-        )
-        fig.suptitle(f'Beginning PSNR: {beginning_psnr}, End PSNR: {end_psnr}')
-        plt.savefig(figures_dir / f'mri_recon_uncertain_{ind}.png')
+        plt.savefig(figures_dir / f'reconstruction_samples_{ind}.png')
 
 
 

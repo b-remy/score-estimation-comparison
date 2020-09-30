@@ -250,40 +250,42 @@ class TemperedMC(kernel_base.TransitionKernel):
       # Proposed new temperature
       proposed_inverse_temperatures = self.gamma * inverse_temperatures
       dtype = inverse_temperatures.dtype
+      #
+      # # We will lower the temperature if this new proposed step is compatible with
+      # # a temperature swap
+      # v = new_state[0] - states[0]
+      # cs = states[0]
+      # @jax.vmap
+      # def integrand(t):
+      #   return jnp.sum(self._parameters['target_score_fn']( t * v + cs, inverse_temperatures)*v, axis=-1)
+      # delta_logp1 = simps(integrand, 0.,1., self._parameters['num_delta_logp_steps'])
+      #
+      # # Now we compute the reverse
+      # v = -v
+      # cs = states[0]
+      # @jax.vmap
+      # def integrand(t):
+      #   return jnp.sum(self._parameters['target_score_fn']( t * v + cs, proposed_inverse_temperatures)*v, axis=-1)
+      # delta_logp2 = simps(integrand, 0.,1., self._parameters['num_delta_logp_steps'])
+      #
+      # log_accept_ratio = (delta_logp1 + delta_logp2)
+      #
+      # log_accept_ratio = tf.where(
+      #     tf.math.is_finite(log_accept_ratio),
+      #     log_accept_ratio, tf.constant(-np.inf, dtype=dtype))
+      #
+      # # Produce Log[Uniform] draws that are identical at swapped indices.
+      # log_uniform = tf.math.log(
+      #     samplers.uniform(shape=log_accept_ratio.shape,
+      #                      dtype=dtype,
+      #                      seed=logu_seed))
+      #
+      # is_tempering_accepted_mask = tf.less(
+      #     log_uniform,
+      #     log_accept_ratio,
+      #     name='is_tempering_accepted_mask')
+      log_accept_ratio = tf.zeros_like(inverse_temperatures)
 
-      # We will lower the temperature if this new proposed step is compatible with
-      # a temperature swap
-      v = new_state[0] - states[0]
-      cs = states[0]
-      @jax.vmap
-      def integrand(t):
-        return jnp.sum(self._parameters['target_score_fn']( t * v + cs, inverse_temperatures)*v, axis=-1)
-      delta_logp1 = simps(integrand, 0.,1., self._parameters['num_delta_logp_steps'])
-
-      # Now we compute the reverse
-      v = -v
-      cs = states[0]
-      @jax.vmap
-      def integrand(t):
-        return jnp.sum(self._parameters['target_score_fn']( t * v + cs, proposed_inverse_temperatures)*v, axis=-1)
-      delta_logp2 = simps(integrand, 0.,1., self._parameters['num_delta_logp_steps'])
-
-      log_accept_ratio = (delta_logp1 + delta_logp2)
-
-      log_accept_ratio = tf.where(
-          tf.math.is_finite(log_accept_ratio),
-          log_accept_ratio, tf.constant(-np.inf, dtype=dtype))
-
-      # Produce Log[Uniform] draws that are identical at swapped indices.
-      log_uniform = tf.math.log(
-          samplers.uniform(shape=log_accept_ratio.shape,
-                           dtype=dtype,
-                           seed=logu_seed))
-
-      is_tempering_accepted_mask = tf.less(
-          log_uniform,
-          log_accept_ratio,
-          name='is_tempering_accepted_mask')
 
       is_min_steps_satisfied = tf.greater(
           steps_at_temperature,
@@ -294,9 +296,9 @@ class TemperedMC(kernel_base.TransitionKernel):
       # Only propose tempering if the chain was going to accept this point anyway
       is_tempering_accepted_mask = tf.math.logical_and(is_min_steps_satisfied, #is_tempering_accepted_mask,
                                                        pre_tempering_results.is_accepted)
-
-      is_tempering_accepted_mask = tf.math.logical_and(is_tempering_accepted_mask,
-                                                        is_min_steps_satisfied)
+      #
+      # is_tempering_accepted_mask = tf.math.logical_and(is_tempering_accepted_mask,
+      #                                                  is_min_steps_satisfied)
 
       # Updating accepted inverse temperatures
       post_tempering_inverse_temperatures = mcmc_util.choose(
@@ -305,7 +307,8 @@ class TemperedMC(kernel_base.TransitionKernel):
 
       steps_at_temperature = mcmc_util.choose(
             is_tempering_accepted_mask,
-            tf.zeros_like(steps_at_temperature), steps_at_temperature+1)
+            tf.zeros_like(steps_at_temperature),
+            steps_at_temperature+tf.cast(pre_tempering_results.is_accepted, tf.int32))
 
       # Invalidating and recomputing results
       [

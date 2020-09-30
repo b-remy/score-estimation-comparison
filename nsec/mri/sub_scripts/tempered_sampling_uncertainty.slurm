@@ -22,12 +22,12 @@ module purge
 conda deactivate fastmri-tf-2.1.0
 module load tensorflow-gpu/py3/2.3.0
 
-opt[0]="1000"
-opt[1]="1"
-opt[2]="0.01"
+opt[0]="2.0"
+opt[1]="0.5"
+opt[2]="0."
 
 export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/nsec_nofc_3scales
-export FIGURES_DIR=$SCRATCH/nsec_figures/tempered_sampling_sn5_3scales_dcs${opt[$SLURM_ARRAY_TASK_ID]}
+export FIGURES_DIR=$SCRATCH/nsec_figures/tempered_sampling_nofc_3scales_sn${opt[$SLURM_ARRAY_TASK_ID]}
 
-srun python ./nsec/mri/tempered_sampling_reconstruction.py -n 10000 -b 2 -c CORPD_FBK -sn 0.5 -nps 50. --no-fcon -sc 3 -nr 10 -e 5 -dcs ${opt[$SLURM_ARRAY_TASK_ID]} -nr 2
+srun python ./nsec/mri/tempered_sampling_reconstruction.py -n 10000 -b 2 -c CORPD_FBK -sn ${opt[$SLURM_ARRAY_TASK_ID]} -nps 50 --no-fcon -sc 3 -nr 10 -e 15 -dcs 0.1 -si 100

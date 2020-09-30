@@ -2,6 +2,7 @@ from functools import partial
 import os
 from pathlib import Path
 import random
+random.seed(0)
 
 import h5py
 from joblib import Parallel, delayed
@@ -35,7 +36,7 @@ def gen_mask(kspace, acceleration_factor=4):
     # Create the mask
     num_low_freqs = int(round(num_cols * center_fraction))
     prob = (num_cols / acceleration_factor - num_low_freqs) / (num_cols - num_low_freqs)
-    mask = np.random.default_rng(None).uniform(size=num_cols) < prob
+    mask = np.random.default_rng(0).uniform(size=num_cols) < prob
     pad = (num_cols - num_low_freqs + 1) // 2
     mask[pad:pad + num_low_freqs] = 1
 
@@ -109,7 +110,7 @@ def mri_noisy_generator(
         data_path = train_path
     elif split == 'val':
         data_path = val_path
-    data_files = list(data_path.glob('*.h5'))
+    data_files = sorted(list(data_path.glob('*.h5')))
     if contrast is not None:
         data_files = [f for f in data_files if load_contrast(f) == contrast]
     n_files = len(data_files)
@@ -160,7 +161,7 @@ def mri_recon_generator(
         data_path = train_path
     elif split == 'val':
         data_path = val_path
-    data_files = list(data_path.glob('*.h5'))
+    data_files = sorted(list(data_path.glob('*.h5')))
     if contrast is not None:
         data_files = [f for f in data_files if load_contrast(f) == contrast]
     n_files = len(data_files)

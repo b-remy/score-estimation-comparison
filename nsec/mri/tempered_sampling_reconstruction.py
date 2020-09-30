@@ -146,6 +146,7 @@ def reconstruct_image_tempered_sampling(
             axs[0, 1].axis('off')
             for i in range(10):
                 im = samples[i].reshape((image_size, image_size, 2))
+                im_not_normed = im
                 im = jnp.linalg.norm(im, axis=-1)
                 im = jnp.squeeze(im)
                 if i < 4:
@@ -167,7 +168,7 @@ def reconstruct_image_tempered_sampling(
             )
             fig.suptitle(f'Beginning PSNR: {beginning_psnr}, End PSNR: {end_psnr}')
             plt.savefig(figures_dir / f'mri_recon_{ind}_{j}.png')
-            final_samples.append(im)
+            final_samples.append(im_not_normed)
         mean_samples = np.mean(final_samples, axis=0)
         std_samples = np.std(final_samples, axis=0)
         fig, axs = plt.subplots(1, 4, sharex=True, sharey=True, figsize=(8, 8), gridspec_kw={'wspace': 0, 'hspace': 0})
@@ -175,9 +176,9 @@ def reconstruct_image_tempered_sampling(
         axs[0].axis('off')
         axs[1].imshow(jnp.squeeze(jnp.abs(x_zfilled[0])), vmin=0, vmax=150)
         axs[1].axis('off')
-        axs[2].imshow(jnp.squeeze(mean_samples), vmin=0, vmax=150)
+        axs[2].imshow(jnp.squeeze(jnp.linalg.norm(mean_samples, axis=-1)), vmin=0, vmax=150)
         axs[2].axis('off')
-        axs[3].imshow(jnp.squeeze(std_samples))
+        axs[3].imshow(jnp.squeeze(jnp.linalg.norm(std_samples, axis=-1)))
         axs[3].axis('off')
         plt.tight_layout()
         end_psnr = psnr(

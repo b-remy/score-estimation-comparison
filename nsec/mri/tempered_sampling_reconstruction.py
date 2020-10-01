@@ -6,6 +6,7 @@ os.environ['XLA_FLAGS']='--xla_gpu_cuda_data_dir=/gpfslocalsys/cuda/10.1.2'
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import numpy as np
 import pickle
 # from skimage.metrics import peak_signal_noise_ratio as psnr
@@ -25,6 +26,13 @@ figures_dir = Path(os.environ['FIGURES_DIR'])
 figures_dir.mkdir(exist_ok=True)
 chains_dir = figures_dir / 'chains'
 chains_dir.mkdir(exist_ok=True)
+
+
+## hardcoded zoom slices
+zoom_slices = {
+    0: tuple([slice(100, 180), slice(220, 300)]),
+    1: tuple([slice(240, 320), slice(110, 190)]),
+}
 
 def reconstruct_image_tempered_sampling(
         initial_sigma=50.,
@@ -186,25 +194,49 @@ def reconstruct_image_tempered_sampling(
             plt.savefig(chains_dir / f'reconstruction_chain_{ind}_{j}.png')
             final_samples.append(im_not_normed)
         target_image = jnp.squeeze(jnp.abs(image_gt[ind]))
-        fig, axs = plt.subplots(2, 5, sharex=True, sharey=True, figsize=(10, 5), gridspec_kw={'wspace': 0, 'hspace': 0})
-        axs[0, 0].imshow(target_image, vmin=0, vmax=200)
-        axs[0, 0].axis('off')
-        axs[0, 1].imshow(jnp.squeeze(jnp.abs(x_zfilled[0])), vmin=0, vmax=200)
-        axs[0, 1].axis('off')
-        axs[0, 2].imshow(np.squeeze(recon_nn[ind]), vmin=0, vmax=200)
-        axs[0, 2].axis('off')
-        for i in range(n_repetitions):
-            im = final_samples[i]
-            im = jnp.linalg.norm(im, axis=-1)
-            im = jnp.squeeze(im)
-            if i < 2:
-                ax = axs[0, i+3]
+        for flag_zoom in [False, True]:
+            if flag_zoom:
+                zoom = zoom_slices[ind]
             else:
-                ax = axs[1, i - 2]
-            ax.imshow(im, vmin=0, vmax=200)
-            ax.axis('off')
-        plt.tight_layout()
-        plt.savefig(figures_dir / f'reconstruction_samples_{ind}.png')
+                zoom = slice(None)
+            fig, axs = plt.subplots(2, 5, sharex=True, sharey=True, figsize=(10, 5), gridspec_kw={'wspace': 0, 'hspace': 0})
+            axs[0, 0].imshow(target_image, vmin=0, vmax=200)
+            axs[0, 1].imshow(jnp.squeeze(jnp.abs(x_zfilled[0]))[zoom], vmin=0, vmax=200)
+            axs[0, 2].imshow(np.squeeze(recon_nn[ind])[zoom], vmin=0, vmax=200)
+            for i in range(n_repetitions):
+                im = final_samples[i]
+                im = jnp.linalg.norm(im, axis=-1)
+                im = jnp.squeeze(im)[zoom]
+                if i < 2:
+                    ax = axs[0, i+3]
+                else:
+                    ax = axs[1, i - 2]
+                ax.imshow(im, vmin=0, vmax=200)
+            for i in range(2):
+                for j in range(5):
+                    ax = axs[i, j]
+                    ax.axis('off')
+                    if not flag_zoom:
+                        zoom = zoom_slices[ind]
+                        rect_start = (zoom[1].start, zoom[0].start)
+                        rect_width = zoom[1].stop - zoom[1].start
+                        rect_length = zoom[0].stop - zoom[0].start
+                        rect = Rectangle(
+                            rect_start,
+                            rect_width,
+                            rect_length,
+                            linewidth=1,
+                            edgecolor='r',
+                            facecolor='none',
+                        )
+                        ax.add_patch(rect)
+
+            plt.tight_layout()
+            fig_name = f'reconstruction_samples_{ind}.png'
+            if flag_zoom:
+                fig_name = 'zoom_' + fig_name
+            plt.savefig(figures_dir / fig_name)
+
 
 
 

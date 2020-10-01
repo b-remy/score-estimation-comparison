@@ -126,6 +126,7 @@ def reconstruct_image_tempered_sampling(
         fourier_obj = FFT2(mask[ind])
         x_zfilled = fourier_obj.adj_op(kspace[ind, ..., 0])[None, ..., None]
         final_samples = []
+        plot_max = np.max(np.abs(image_gt[ind]))
         for j in range(n_repetitions):
             ##### ACTUAL SAMPLING ZONE
             def likelihood_fn(x_, sigma):
@@ -188,7 +189,7 @@ def reconstruct_image_tempered_sampling(
                 im = jnp.linalg.norm(im, axis=-1)
                 im = jnp.squeeze(im)
                 ax = axs[i]
-                ax.imshow(im, vmin=0, vmax=200)
+                ax.imshow(im, vmin=0, vmax=plot_max)
                 ax.axis('off')
             plt.tight_layout()
             plt.savefig(chains_dir / f'reconstruction_chain_{ind}_{j}.png')
@@ -200,9 +201,9 @@ def reconstruct_image_tempered_sampling(
             else:
                 zoom = slice(None)
             fig, axs = plt.subplots(2, 5, sharex=True, sharey=True, figsize=(10, 5), gridspec_kw={'wspace': 0, 'hspace': 0})
-            axs[0, 0].imshow(target_image, vmin=0, vmax=200)
-            axs[0, 1].imshow(jnp.squeeze(jnp.abs(x_zfilled[0]))[zoom], vmin=0, vmax=200)
-            axs[0, 2].imshow(np.squeeze(recon_nn[ind])[zoom], vmin=0, vmax=200)
+            axs[0, 0].imshow(target_image, vmin=0, vmax=plot_max)
+            axs[0, 1].imshow(jnp.squeeze(jnp.abs(x_zfilled[0]))[zoom], vmin=0, vmax=plot_max)
+            axs[0, 2].imshow(np.squeeze(recon_nn[ind])[zoom], vmin=0, vmax=plot_max)
             for i in range(n_repetitions):
                 im = final_samples[i]
                 im = jnp.linalg.norm(im, axis=-1)
@@ -211,7 +212,7 @@ def reconstruct_image_tempered_sampling(
                     ax = axs[0, i+3]
                 else:
                     ax = axs[1, i - 2]
-                ax.imshow(im, vmin=0, vmax=200)
+                ax.imshow(im, vmin=0, vmax=plot_max)
             for i in range(2):
                 for j in range(5):
                     ax = axs[i, j]

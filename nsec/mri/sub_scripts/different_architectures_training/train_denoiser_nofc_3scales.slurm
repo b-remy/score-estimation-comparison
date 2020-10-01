@@ -33,4 +33,4 @@ opt[4]="-is 64 -sn 5."
 opt[5]="-is 64 -sn 10."
 opt[6]="-is 64 -sn 0."
 
-srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]} -n 100000 -c CORPD_FBK -nps 50 -lr 0.0001 --no-fcon -s 3 -sf 10000
+srun python ./nsec/mri/denoiser_training.py ${opt[$SLURM_ARRAY_TASK_ID]} -n 100000 -c CORPD_FBK -nps 0.5 -lr 0.0001 --no-fcon -s 3 -sf 10000

@@ -50,6 +50,7 @@ def reconstruct_image_tempered_sampling(
         scales=4,
         gamma=0.995,
         min_steps_per_temp=2,
+        projection=False,
     ):
     val_mri_gen = mri_recon_generator(
         split='val',
@@ -193,7 +194,12 @@ def reconstruct_image_tempered_sampling(
                 ax.axis('off')
             plt.tight_layout()
             plt.savefig(chains_dir / f'reconstruction_chain_{ind}_{j}.png')
-            final_samples.append(im_not_normed)
+            im_complex = im_not_normed[..., 0] + 1j*im_not_normed[..., 1]
+            if projection:
+                ### Projection step
+                projection_sigma = jnp.array(20)  # hardcoded
+                im_complex = im_complex + projection_sigma**2 * score(im_complex[None, ..., None], projection_sigma.reshape((-1,1,1,1)), is_training=False)[0][0, ..., 0]
+            final_samples.append(im_complex)
         target_image = jnp.squeeze(jnp.abs(image_gt[ind]))
         for flag_zoom in [False, True]:
             if flag_zoom:
@@ -206,7 +212,7 @@ def reconstruct_image_tempered_sampling(
             axs[0, 2].imshow(np.squeeze(recon_nn[ind])[zoom], vmin=0, vmax=plot_max)
             for i in range(n_repetitions):
                 im = final_samples[i]
-                im = jnp.linalg.norm(im, axis=-1)
+                im = jnp.abs(im)
                 im = jnp.squeeze(im)[zoom]
                 if i < 2:
                     ax = axs[0, i+3]
@@ -255,6 +261,7 @@ def reconstruct_image_tempered_sampling(
 @click.option('sn_val', '-sn', type=float, default=2.)
 @click.option('no_final_conv', '--no-fcon', is_flag=True)
 @click.option('scales', '-sc', type=int, default=4)
+@click.option('projection', '-p', is_flag=True)
 def reconstruct_image_tempered_sampling_click(
         initial_sigma,
         batch_size,
@@ -269,6 +276,7 @@ def reconstruct_image_tempered_sampling_click(
         sn_val,
         no_final_conv,
         scales,
+        projection,
     ):
     reconstruct_image_tempered_sampling(
         initial_sigma=initial_sigma,
@@ -284,6 +292,7 @@ def reconstruct_image_tempered_sampling_click(
         sn_val=sn_val,
         no_final_conv=no_final_conv,
         scales=scales,
+        projection=projection,
     )
 
 

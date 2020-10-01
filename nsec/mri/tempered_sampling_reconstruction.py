@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import numpy as np
 import pickle
-# from skimage.metrics import peak_signal_noise_ratio as psnr
+from skimage.metrics import peak_signal_noise_ratio as psnr
 import tensorflow_probability as tfp; tfp = tfp.experimental.substrates.jax
 import tensorflow as tf
 
@@ -197,7 +197,9 @@ def reconstruct_image_tempered_sampling(
             im_complex = im_not_normed[..., 0] + 1j*im_not_normed[..., 1]
             if projection:
                 ### Projection step
-                projection_sigma = jnp.array(20)  # hardcoded
+                acceptance_rate = 0.8
+                projection_sigma = initial_sigma * (gamma)**(int(num_results * acceptance_rate) // (min_steps_per_temp+1) )
+                projection_sigma = jnp.array(projection_sigma)
                 im_complex = im_complex + projection_sigma**2 * score(im_complex[None, ..., None], projection_sigma.reshape((-1,1,1,1)), is_training=False)[0][0, ..., 0]
             final_samples.append(im_complex)
         target_image = jnp.squeeze(jnp.abs(image_gt[ind]))
@@ -243,6 +245,20 @@ def reconstruct_image_tempered_sampling(
             if flag_zoom:
                 fig_name = 'zoom_' + fig_name
             plt.savefig(figures_dir / fig_name)
+            psnrs = []
+    if projection:
+        for i in range(n_repetitions):
+            im = final_samples[i]
+            im = jnp.abs(im)
+            im = jnp.squeeze(im)
+            p = psnr(jnp.squeeze(target_image), im, data_range=np.max(target_image) - np.min(target_image))
+            psnrs.append(p)
+
+        print(f'Batch {ind} bayesian PSNR:', np.mean(psnrs))
+        p = psnr(jnp.squeeze(target_image), np.squeeze(recon_nn[ind]), data_range=np.max(target_image) - np.min(target_image))
+        print(f'Batch {ind} NN PSNR:', p)
+        p = psnr(jnp.squeeze(target_image), jnp.squeeze(jnp.abs(x_zfilled[0])), data_range=np.max(target_image) - np.min(target_image))
+        print(f'Batch {ind} ZF PSNR:', p)
 
 
 

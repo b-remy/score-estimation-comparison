@@ -16,6 +16,7 @@ from nsec.mri.model import get_model, get_additional_info, get_model_name
 
 def train_denoiser_score_matching(
         batch_size=32,
+        scale_factor=1e6,
         noise_power_spec=30,
         n_steps=int(1e3),
         lr=1e-3,
@@ -30,7 +31,7 @@ def train_denoiser_score_matching(
     ):
     train_mri_gen = mri_noisy_generator(
         split='train',
-        scale_factor=1e6,
+        scale_factor=scale_factor,
         noise_power_spec=noise_power_spec,
         batch_size=batch_size,
         contrast=contrast,
@@ -91,6 +92,7 @@ def train_denoiser_score_matching(
 @click.option('n_steps', '-n', type=int, default=int(1e3))
 @click.option('noise_power_spec', '-nps', type=float, default=30)
 @click.option('lr', '-lr', type=float, default=1e-3)
+@click.option('scale_factor', '-sf', type=float, default=1e6)
 @click.option('sn_val', '-sn', type=float, default=2.)
 @click.option('contrast', '-c', type=str, default=None)
 @click.option('magnitude_images', '-m', is_flag=True)
@@ -112,6 +114,7 @@ def train_denoiser_score_matching_click(
         image_size,
         no_final_conv,
         scales,
+        scale_factor,
     ):
     train_denoiser_score_matching(
         batch_size=batch_size,
@@ -126,6 +129,7 @@ def train_denoiser_score_matching_click(
         image_size=image_size,
         no_final_conv=no_final_conv,
         scales=scales,
+        scale_factor=scale_factor,
     )
 
 

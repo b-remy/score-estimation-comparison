@@ -40,6 +40,7 @@ def reconstruct_image_tempered_sampling(
         contrast=None,
         acceleration_factor=4,
         noise_power_spec_training=30.,
+        scale_factor=1e6,
         image_size=320,
         num_results=2500,
         eps=10,
@@ -57,7 +58,7 @@ def reconstruct_image_tempered_sampling(
         batch_size=batch_size,
         contrast=contrast,
         acceleration_factor=acceleration_factor,
-        scale_factor=1e6,
+        scale_factor=scale_factor,
         image_size=image_size,
     )
 
@@ -271,6 +272,7 @@ def reconstruct_image_tempered_sampling(
 @click.option('image_size', '-is', type=int, default=320)
 @click.option('num_results', '-n', type=int, default=50_000)
 @click.option('eps', '-e', type=float, default=1e-5)
+@click.option('scale_factor', '-sf', type=float, default=1e6)
 @click.option('soft_dc_sigma', '-dcs', type=float, default=0.01)
 @click.option('initial_sigma', '-si', type=float, default=50.)
 @click.option('n_repetitions', '-nr', type=int, default=10)
@@ -293,6 +295,7 @@ def reconstruct_image_tempered_sampling_click(
         no_final_conv,
         scales,
         projection,
+        scale_factor,
     ):
     reconstruct_image_tempered_sampling(
         initial_sigma=initial_sigma,
@@ -309,6 +312,7 @@ def reconstruct_image_tempered_sampling_click(
         no_final_conv=no_final_conv,
         scales=scales,
         projection=projection,
+        scale_factor=scale_factor,
     )
 
 

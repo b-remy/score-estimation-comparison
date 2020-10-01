@@ -201,7 +201,7 @@ def reconstruct_image_tempered_sampling(
             else:
                 zoom = slice(None)
             fig, axs = plt.subplots(2, 5, sharex=True, sharey=True, figsize=(10, 5), gridspec_kw={'wspace': 0, 'hspace': 0})
-            axs[0, 0].imshow(target_image, vmin=0, vmax=plot_max)
+            axs[0, 0].imshow(target_image[zoom], vmin=0, vmax=plot_max)
             axs[0, 1].imshow(jnp.squeeze(jnp.abs(x_zfilled[0]))[zoom], vmin=0, vmax=plot_max)
             axs[0, 2].imshow(np.squeeze(recon_nn[ind])[zoom], vmin=0, vmax=plot_max)
             for i in range(n_repetitions):

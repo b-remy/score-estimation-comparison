@@ -50,6 +50,7 @@ def reconstruct_image_tempered_sampling(
         no_final_conv=False,
         scales=4,
         gamma=0.995,
+        nu=1.5,
         min_steps_per_temp=2,
         projection=False,
     ):
@@ -158,7 +159,7 @@ def reconstruct_image_tempered_sampling(
               return ScoreHamiltonianMonteCarlo(
                   target_log_prob_fn=target_log_prob_fn,
                   target_score_fn=target_score_fn,
-                  step_size=eps*(sigma/initial_sigma)**1.5,
+                  step_size=eps*(sigma/initial_sigma)**nu,
                   num_leapfrog_steps=3,
                   num_delta_logp_steps=4)
 
@@ -280,6 +281,7 @@ def reconstruct_image_tempered_sampling(
 @click.option('no_final_conv', '--no-fcon', is_flag=True)
 @click.option('scales', '-sc', type=int, default=4)
 @click.option('projection', '-p', is_flag=True)
+@click.option('nu', '-nu', type=float, default=1.5)
 def reconstruct_image_tempered_sampling_click(
         initial_sigma,
         batch_size,
@@ -296,6 +298,7 @@ def reconstruct_image_tempered_sampling_click(
         scales,
         projection,
         scale_factor,
+        nu,
     ):
     reconstruct_image_tempered_sampling(
         initial_sigma=initial_sigma,
@@ -313,6 +316,7 @@ def reconstruct_image_tempered_sampling_click(
         scales=scales,
         projection=projection,
         scale_factor=scale_factor,
+        nu=nu,
     )
 
 

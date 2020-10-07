@@ -254,27 +254,27 @@ def reconstruct_image_tempered_sampling(
                 fig_name = 'zoom_' + fig_name
             plt.savefig(figures_dir / fig_name)
             psnrs = []
-    if projection:
-        sample_mean = None
-        for i in range(n_repetitions):
-            im = final_samples[i]
-            im = jnp.abs(im)
-            im = jnp.squeeze(im)
-            if sample_mean is None:
-                sample_mean = im
-            else:
-                sample_mean = sample_mean + im
-            p = psnr(jnp.squeeze(target_image), im, data_range=np.max(target_image) - np.min(target_image))
-            psnrs.append(p)
-        sample_mean = sample_mean / n_repetitions
-        p_mean = psnr(jnp.squeeze(target_image), sample_mean, data_range=np.max(target_image) - np.min(target_image))
+        if projection:
+            sample_mean = None
+            for i in range(n_repetitions):
+                im = final_samples[i]
+                im = jnp.abs(im)
+                im = jnp.squeeze(im)
+                if sample_mean is None:
+                    sample_mean = im
+                else:
+                    sample_mean = sample_mean + im
+                p = psnr(jnp.squeeze(target_image), im, data_range=np.max(target_image) - np.min(target_image))
+                psnrs.append(p)
+            sample_mean = sample_mean / n_repetitions
+            p_mean = psnr(jnp.squeeze(target_image), sample_mean, data_range=np.max(target_image) - np.min(target_image))
 
-        print(f'Batch {ind} bayesian PSNR (mean per sample):', np.mean(psnrs))
-        print(f'Batch {ind} bayesian PSNR (vs sample mean):', p_mean)
-        p = psnr(jnp.squeeze(target_image), np.squeeze(recon_nn[ind]), data_range=np.max(target_image) - np.min(target_image))
-        print(f'Batch {ind} NN PSNR:', p)
-        p = psnr(jnp.squeeze(target_image), jnp.squeeze(jnp.abs(x_zfilled[0])), data_range=np.max(target_image) - np.min(target_image))
-        print(f'Batch {ind} ZF PSNR:', p)
+            print(f'Batch {ind} bayesian PSNR (mean per sample):', np.mean(psnrs))
+            print(f'Batch {ind} bayesian PSNR (vs sample mean):', p_mean)
+            p = psnr(jnp.squeeze(target_image), np.squeeze(recon_nn[ind]), data_range=np.max(target_image) - np.min(target_image))
+            print(f'Batch {ind} NN PSNR:', p)
+            p = psnr(jnp.squeeze(target_image), jnp.squeeze(jnp.abs(x_zfilled[0])), data_range=np.max(target_image) - np.min(target_image))
+            print(f'Batch {ind} ZF PSNR:', p)
 
 
 

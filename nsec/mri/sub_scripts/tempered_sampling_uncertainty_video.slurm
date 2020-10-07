@@ -12,6 +12,7 @@
 #SBATCH --qos=qos_gpu-t3
 #SBATCH --output=tempered_sampling%A_%a.out # nom du fichier de sortie
 #SBATCH --error=tempered_sampling%A_%a.out  # nom du fichier d'erreur (ici commun avec la sortie)
+#SBATCH --array=0-1
 
 set -x
 cd $WORK/score-estimation-comparison
@@ -21,8 +22,11 @@ module purge
 conda deactivate fastmri-tf-2.1.0
 module load tensorflow-gpu/py3/2.3.0
 
+opt[0]="4"
+opt[1]="8"
+
 export FASTMRI_DATA_DIR=$SCRATCH/
 export CHECKPOINTS_DIR=$SCRATCH/nsec_nofc_3scales
-export FIGURES_DIR=$SCRATCH/nsec_figures/tempered_sampling_projected_nofc_3scales_af8
+export FIGURES_DIR=$SCRATCH/nsec_figures/tempered_sampling_projected_nofc_3scales_af${opt[$SLURM_ARRAY_TASK_ID]}
 
-srun python ./nsec/mri/tempered_sampling_reconstruction.py -n 1000 -b 2 -c CORPD_FBK -sn 2.0 -nps 50 --no-fcon -sc 3 -nr 32 -e 10 -dcs 0.1 -si 100 -p -sny -a 8
+srun python ./nsec/mri/tempered_sampling_reconstruction.py -n 1000 -b 2 -c CORPD_FBK -sn 2.0 -nps 50 --no-fcon -sc 3 -nr 32 -e 10 -dcs 0.1 -si 100 -p -sny -a ${opt[$SLURM_ARRAY_TASK_ID]}

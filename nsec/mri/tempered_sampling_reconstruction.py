@@ -53,6 +53,7 @@ def reconstruct_image_tempered_sampling(
         nu=1.5,
         min_steps_per_temp=2,
         projection=False,
+        save_npy=False,
     ):
     val_mri_gen = mri_recon_generator(
         split='val',
@@ -218,6 +219,11 @@ def reconstruct_image_tempered_sampling(
                 im = final_samples[i]
                 im = jnp.abs(im)
                 im = jnp.squeeze(im)[zoom]
+                if not flag_zoom:
+                    if save_npy:
+                        np.save(figures_dir / f'reconstruction_sample_{ind}_{i}.npy', im)
+                if i > 6:
+                    continue
                 if i < 2:
                     ax = axs[0, i+3]
                 else:
@@ -249,14 +255,22 @@ def reconstruct_image_tempered_sampling(
             plt.savefig(figures_dir / fig_name)
             psnrs = []
     if projection:
+        sample_mean = None
         for i in range(n_repetitions):
             im = final_samples[i]
             im = jnp.abs(im)
             im = jnp.squeeze(im)
+            if sample_mean is None:
+                sample_mean = im
+            else:
+                sample_mean = sample_mean + im
             p = psnr(jnp.squeeze(target_image), im, data_range=np.max(target_image) - np.min(target_image))
             psnrs.append(p)
+        sample_mean = sample_mean / n_repetitions
+        p_mean = psnr(jnp.squeeze(target_image), sample_mean, data_range=np.max(target_image) - np.min(target_image))
 
-        print(f'Batch {ind} bayesian PSNR:', np.mean(psnrs))
+        print(f'Batch {ind} bayesian PSNR (mean per sample):', np.mean(psnrs))
+        print(f'Batch {ind} bayesian PSNR (vs sample mean):', p_mean)
         p = psnr(jnp.squeeze(target_image), np.squeeze(recon_nn[ind]), data_range=np.max(target_image) - np.min(target_image))
         print(f'Batch {ind} NN PSNR:', p)
         p = psnr(jnp.squeeze(target_image), jnp.squeeze(jnp.abs(x_zfilled[0])), data_range=np.max(target_image) - np.min(target_image))
@@ -281,6 +295,7 @@ def reconstruct_image_tempered_sampling(
 @click.option('no_final_conv', '--no-fcon', is_flag=True)
 @click.option('scales', '-sc', type=int, default=4)
 @click.option('projection', '-p', is_flag=True)
+@click.option('save_npy', '-sny', is_flag=True)
 @click.option('nu', '-nu', type=float, default=1.5)
 def reconstruct_image_tempered_sampling_click(
         initial_sigma,
@@ -298,6 +313,7 @@ def reconstruct_image_tempered_sampling_click(
         scales,
         projection,
         scale_factor,
+        save_npy,
         nu,
     ):
     reconstruct_image_tempered_sampling(
@@ -317,6 +333,7 @@ def reconstruct_image_tempered_sampling_click(
         projection=projection,
         scale_factor=scale_factor,
         nu=nu,
+        save_npy=save_npy,
     )
 
 

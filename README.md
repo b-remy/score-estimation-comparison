@@ -4,11 +4,15 @@ Code repository for the two following papers:
 Zaccharie Ramzi, Benjamin Remy, François Lanusse, Jean-Luc Starck and Philippe Ciuciu
 *Deep Learning and Inverse Problems Workshop, NeurIPS 2020.*
 
+*Code on branch: [mri-recon](https://github.com/b-remy/score-estimation-comparison/tree/mri-recon)*
+
 ![](assets/knee.gif)
 
 - [Probabilistic Mapping of Dark Matter by Neural Score Matching](https://arxiv.org/abs/2011.08271),
 Benjamin Remy, François Lanusse, Zaccharie Ramzi, Jia Liu, Niall Jeffrey and Jean-Luc Starck.
 *Machine Learning and the Physical Sciences Workshop, NeurIPS 2020.*
+
+*Code on branch: [lensing-recon](https://github.com/b-remy/score-estimation-comparison/tree/lensing-recon)*
 
 ![](assets/score_sims_results.png)
 
